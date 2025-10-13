@@ -19,9 +19,8 @@ function renderServerList(category) {
     
     let filteredServers = servers;
     
-    // NOTE: Filtering by category on the settings page needs refinement 
-    // to handle the categories array. For now, it filters by the first category.
     if (category !== 'all') {
+        // Filter by checking if the server's categories array includes the selected category
         filteredServers = servers.filter(server => server.categories && server.categories.includes(category));
     }
     
@@ -44,7 +43,7 @@ function renderServerList(category) {
         listItem.className = 'server-list-item';
         listItem.setAttribute('data-id', server.id);
         
-        // FIX: Safely display the first category from the categories array
+        // Safely display the first category from the categories array
         const primaryCategory = server.categories && server.categories.length > 0 ? server.categories[0] : 'others';
 
         listItem.innerHTML = `
