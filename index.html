@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MediaHub</title>
+    <title>ISP Media Server Directory</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -13,12 +13,9 @@
             <div class="header-content">
                 <div class="logo">
                     <i class="fas fa-satellite-dish"></i>
-                    <h1>MediaHub</h1>
+                    <h1>ISP Media Hub</h1>
                 </div>
                 <div class="header-actions">
-                    <button class="btn btn-primary" id="manageServersBtn">
-                        <i class="fas fa-database"></i> Manage Servers
-                    </button>
                     <button class="btn btn-info" id="settingsBtn">
                         <i class="fas fa-cog"></i> Settings
                     </button>
@@ -77,80 +74,60 @@
         <div class="server-grid" id="serverGrid">
             </div>
         
-        <footer>
-             <p>
-                MediaHub @2025 | Made by &copy;Sazzad. 
-                Contact Sazzad 
-                <a href="https://t.me/imsazzad" target="_blank" style="color: var(--primary); margin-left: 0.25rem;">
-                    <i class="fab fa-telegram-plane"></i>
-                </a>
-            </p>
-        </footer>
-    </div>
-
-    <div class="modal" id="manageServersModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-database"></i> Manage Servers</h3>
-                <button class="close-modal" id="closeManageModal">&times;</button>
-            </div>
-            
-            <div class="add-server-section" style="border: none; margin-top: 0; padding: 0;">
-                <h4><i class="fas fa-plus-circle"></i> Add New Server</h4>
-                <form id="serverForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="serverName">Server Name</label>
-                            <input type="text" class="form-control" id="serverName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="serverAddress">Server Address</label>
-                            <input type="text" class="form-control" id="serverAddress" placeholder="http:// or ftp:// address" required>
-                        </div>
+        <div class="add-server-section">
+            <h3><i class="fas fa-plus-circle"></i> Add New Server</h3>
+            <form id="serverForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="serverName">Server Name</label>
+                        <input type="text" class="form-control" id="serverName" required>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Categories (Select multiple)</label>
-                            <div class="categories-checkboxes">
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="serverCategories" value="live"> Live TV
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="serverCategories" value="movies"> Movies
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="serverCategories" value="series"> Series
-                                </label>
-                                <label class="checkbox-label">
-                                    <input type="checkbox" name="serverCategories" value="others"> Others
-                                </label>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="serverType">Server Type</label>
-                            <select class="form-control" id="serverType" required>
-                                <option value="bdix">BDIX</option>
-                                <option value="non-bdix">Non-BDIX</option>
-                            </select>
+                    <div class="form-group">
+                        <label for="serverAddress">Server Address</label>
+                        <input type="text" class="form-control" id="serverAddress" placeholder="http:// or ftp:// address" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categories (Select multiple)</label>
+                        <div class="categories-checkboxes">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="live"> Live TV
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="movies"> Movies
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="series"> Series
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="others"> Others
+                            </label>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="serverDescription">Description (Optional)</label>
-                        <input type="text" class="form-control" id="serverDescription">
+                        <label for="serverType">Server Type</label>
+                        <select class="form-control" id="serverType" required>
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
                     </div>
-                    <button type="submit" class="btn btn-success" style="width: 100%;">
-                        <i class="fas fa-save"></i> Add Server
-                    </button>
-                </form>
-            </div>
-
-            <h4 style="margin-top: 2rem;"><i class="fas fa-exchange-alt"></i> Data Management</h4>
-            <div class="import-export-section" style="margin-top: 1rem;">
+                </div>
+                <div class="form-group">
+                    <label for="serverDescription">Description (Optional)</label>
+                    <input type="text" class="form-control" id="serverDescription">
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Add Server
+                </button>
+            </form>
+            
+            <div class="import-export-section">
                 <button class="btn btn-info" id="exportBtn">
-                    <i class="fas fa-file-export"></i> Export Data
+                    <i class="fas fa-file-export"></i> Export Servers
                 </button>
                 <button class="btn btn-warning" id="importBtn">
-                    <i class="fas fa-file-import"></i> Import Data
+                    <i class="fas fa-file-import"></i> Import Servers
                 </button>
                 <button class="btn btn-primary" id="downloadBtn">
                     <i class="fas fa-download"></i> Download Backup
@@ -163,8 +140,19 @@
                 </button>
             </div>
         </div>
+        
+        <footer>
+            <p>
+                MediaHub &copy;2025 | Made by &copy;Sazzad.<br>
+                Contact: 
+                <a href="https://t.me/imsazzad" target="_blank" style="color: var(--primary); text-decoration: none;">
+                    Sazzad 
+                    <i class="fab fa-telegram-plane" style="font-size: 1.25em; vertical-align: middle; margin-left: 0.25rem;"></i>
+                </a>
+            </p>
+        </footer>
     </div>
-    
+
     <div class="modal" id="exportImportModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -280,4 +268,3 @@
     <script src="app.js"></script>
 </body>
 </html>
-
