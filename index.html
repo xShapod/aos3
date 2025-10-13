@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISP Media Server Directory</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <i class="fas fa-satellite-dish"></i>
+                    <h1>ISP Media Hub</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-info" id="settingsBtn">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                    <div class="search">
+                        <input type="text" class="form-control" placeholder="Search servers..." id="searchInput">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="banner">
+            <img src="https://i.ibb.co/MyNgy0pF/1760299817553.png" alt="ISP Media Hub Banner">
+        </div>
+        
+        <!-- SORT OPTIONS -->
+        <div class="sort-options">
+            <button class="sort-btn active" data-sort="manual">
+                <i class="fas fa-sort"></i> Manual Order
+            </button>
+            <button class="sort-btn" data-sort="name">
+                <i class="fas fa-sort-alpha-down"></i> Name
+            </button>
+            <button class="sort-btn" data-sort="recent">
+                <i class="fas fa-clock"></i> Recently Added
+            </button>
+        </div>
+        
+        <div class="category-tabs">
+            <div class="tab active" data-category="all">
+                <i class="fas fa-globe"></i>
+                All Servers
+            </div>
+            <div class="tab" data-category="favorites">
+                <i class="fas fa-star"></i>
+                Favorites
+            </div>
+            <div class="tab" data-category="live">
+                <i class="fas fa-tv"></i>
+                Live TV
+            </div>
+            <div class="tab" data-category="movies">
+                <i class="fas fa-film"></i>
+                Movies
+            </div>
+            <div class="tab" data-category="series">
+                <i class="fas fa-play-circle"></i>
+                Series
+            </div>
+            <div class="tab" data-category="others">
+                <i class="fas fa-folder"></i>
+                Others
+            </div>
+        </div>
+        
+        <div class="server-grid" id="serverGrid">
+            <!-- Server cards will be dynamically inserted here -->
+        </div>
+        
+        <div class="add-server-section">
+            <h3><i class="fas fa-plus-circle"></i> Add New Server</h3>
+            <form id="serverForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="serverName">Server Name</label>
+                        <input type="text" class="form-control" id="serverName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverAddress">Server Address</label>
+                        <input type="text" class="form-control" id="serverAddress" placeholder="http:// or ftp:// address" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="serverCategory">Category</label>
+                        <select class="form-control" id="serverCategory" required>
+                            <option value="live">Live TV</option>
+                            <option value="movies">Movies</option>
+                            <option value="series">Series</option>
+                            <option value="others">Others</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverType">Server Type</label>
+                        <select class="form-control" id="serverType" required>
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="serverDescription">Description (Optional)</label>
+                    <input type="text" class="form-control" id="serverDescription">
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Add Server
+                </button>
+            </form>
+            
+            <div class="import-export-section">
+                <button class="btn btn-info" id="exportBtn">
+                    <i class="fas fa-file-export"></i> Export Servers
+                </button>
+                <button class="btn btn-warning" id="importBtn">
+                    <i class="fas fa-file-import"></i> Import Servers
+                </button>
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+                <button class="btn btn-primary" id="uploadBtn">
+                    <i class="fas fa-upload"></i> Upload Backup
+                </button>
+                <button class="btn btn-secondary" id="importUrlBtn">
+                    <i class="fas fa-link"></i> Import from URL
+                </button>
+            </div>
+        </div>
+        
+        <footer>
+            <p>ISP Media Hub &copy; 2023 | Your Local Media Directory</p>
+        </footer>
+    </div>
+
+    <!-- Export/Import Modal -->
+    <div class="modal" id="exportImportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Export Servers</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div id="modalBody">
+                <textarea class="export-data" id="exportData" readonly></textarea>
+                <div class="import-actions" id="importActions" style="display: none;">
+                    <button class="btn btn-danger" id="replaceData">
+                        <i class="fas fa-exchange-alt"></i> Replace All
+                    </button>
+                    <button class="btn btn-success" id="mergeData">
+                        <i class="fas fa-plus-circle"></i> Merge
+                    </button>
+                </div>
+                <button class="btn btn-primary" id="copyData" style="width: 100%;">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import from URL Modal -->
+    <div class="modal" id="importUrlModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Import from URL</h3>
+                <button class="close-modal" id="closeUrlModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="importUrl">Server List URL</label>
+                    <input type="url" class="form-control" id="importUrl" placeholder="https://example.com/servers.json">
+                </div>
+                <div class="form-group">
+                    <label for="importMethod">
+                        <input type="radio" name="importMethod" value="replace" checked> Replace All
+                    </label>
+                    <label for="importMethod">
+                        <input type="radio" name="importMethod" value="merge"> Merge
+                    </label>
+                </div>
+                <button class="btn btn-success" id="confirmImportUrl" style="width: 100%;">
+                    <i class="fas fa-download"></i> Import from URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Server Modal -->
+    <div class="modal" id="editServerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Edit Server</h3>
+                <button class="close-modal" id="closeEditModal">&times;</button>
+            </div>
+            <div id="editModalBody">
+                <div class="edit-modal-options">
+                    <div class="edit-option">
+                        <label>Server Status:</label>
+                        <select id="editStatus" class="form-control" style="width: auto;">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="edit-option">
+                        <label>Server Type:</label>
+                        <select id="editType" class="form-control" style="width: auto;">
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn btn-success" id="saveEdit" style="width: 100%;">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for upload -->
+    <input type="file" id="fileUpload" accept=".json" style="display: none;">
+
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
