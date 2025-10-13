@@ -4,7 +4,7 @@ let servers = [
         id: 1,
         name: "Live Sports HD",
         address: "http://live.sports.isp.com",
-        category: "live",
+        categories: ["live"],
         type: "bdix",
         status: "active",
         description: "High-definition live sports channels",
@@ -16,7 +16,7 @@ let servers = [
         id: 2,
         name: "Movie Vault",
         address: "ftp://movies.isp.com:2020",
-        category: "movies",
+        categories: ["movies"],
         type: "bdix",
         status: "active",
         description: "Large collection of movies from various genres",
@@ -28,7 +28,7 @@ let servers = [
         id: 3,
         name: "TV Series Archive",
         address: "http://series.isp.com:8080",
-        category: "series",
+        categories: ["series"],
         type: "non-bdix",
         status: "active",
         description: "Complete seasons of popular TV series",
@@ -47,6 +47,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
+        // Ensure all servers have categories array (backward compatibility)
+        servers.forEach(server => {
+            if (!server.categories) {
+                server.categories = [server.category || 'others'];
+            }
+        });
     } else {
         // Save default servers if first time
         localStorage.setItem('ispServers', JSON.stringify(servers));
@@ -67,7 +73,7 @@ function renderServers(category, sortBy) {
         if (category === 'favorites') {
             filteredServers = servers.filter(server => server.isFavorite);
         } else {
-            filteredServers = servers.filter(server => server.category === category);
+            filteredServers = servers.filter(server => server.categories.includes(category));
         }
     }
     
@@ -117,6 +123,11 @@ function renderServers(category, sortBy) {
             </div>
             <div class="server-address">${server.address}</div>
             ${server.description ? `<div class="server-description">${server.description}</div>` : ''}
+            ${server.categories && server.categories.length > 0 ? `
+                <div class="server-categories">
+                    ${server.categories.map(cat => `<span class="server-category">${getCategoryDisplayName(cat)}</span>`).join('')}
+                </div>
+            ` : ''}
             <div class="server-actions">
                 <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
                     <i class="fas fa-external-link-alt"></i> Open
@@ -128,6 +139,17 @@ function renderServers(category, sortBy) {
         `;
         serverGrid.appendChild(serverCard);
     });
+}
+
+// Get display name for category
+function getCategoryDisplayName(category) {
+    const categories = {
+        'live': 'Live TV',
+        'movies': 'Movies',
+        'series': 'Series',
+        'others': 'Others'
+    };
+    return categories[category] || category;
 }
 
 // Sort servers based on criteria
@@ -157,13 +179,25 @@ function toggleFavorite(serverId) {
     }
 }
 
-// Open edit modal
+// Enhanced Open edit modal
 function openEditModal(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
         currentEditServerId = serverId;
+        
+        // Populate all fields
+        document.getElementById('editServerName').value = server.name;
+        document.getElementById('editServerAddress').value = server.address;
         document.getElementById('editStatus').value = server.status;
         document.getElementById('editType').value = server.type;
+        document.getElementById('editDescription').value = server.description || '';
+        
+        // Populate categories checkboxes
+        const categoryCheckboxes = document.querySelectorAll('#editModalBody input[name="editCategories"]');
+        categoryCheckboxes.forEach(checkbox => {
+            checkbox.checked = server.categories.includes(checkbox.value);
+        });
+        
         document.getElementById('editServerModal').style.display = 'flex';
     }
 }
@@ -267,7 +301,7 @@ function importFromURL() {
                     id: Date.now() + 1,
                     name: "Imported Live Server",
                     address: "http://imported.live.server.com",
-                    category: "live",
+                    categories: ["live"],
                     type: "bdix",
                     status: "active",
                     description: "Imported from URL",
@@ -304,13 +338,24 @@ function closeEditModal() {
     currentEditServerId = null;
 }
 
-// Save edit changes
+// Enhanced Save edit changes
 function saveEditChanges() {
     if (currentEditServerId) {
         const server = servers.find(s => s.id === currentEditServerId);
         if (server) {
+            // Get all updated values
+            server.name = document.getElementById('editServerName').value;
+            server.address = document.getElementById('editServerAddress').value;
             server.status = document.getElementById('editStatus').value;
             server.type = document.getElementById('editType').value;
+            server.description = document.getElementById('editDescription').value;
+            
+            // Get selected categories
+            const selectedCategories = [];
+            document.querySelectorAll('#editModalBody input[name="editCategories"]:checked').forEach(checkbox => {
+                selectedCategories.push(checkbox.value);
+            });
+            server.categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
             
             saveServers();
             renderServers(currentCategory, currentSort);
@@ -485,19 +530,27 @@ function mergeServers() {
     }
 }
 
-// Add a new server
+// Enhanced Add a new server with multiple categories
 function addServer() {
     const name = document.getElementById('serverName').value;
     const address = document.getElementById('serverAddress').value;
-    const category = document.getElementById('serverCategory').value;
     const type = document.getElementById('serverType').value;
     const description = document.getElementById('serverDescription').value;
+    
+    // Get selected categories
+    const selectedCategories = [];
+    document.querySelectorAll('#serverForm input[name="serverCategories"]:checked').forEach(checkbox => {
+        selectedCategories.push(checkbox.value);
+    });
+    
+    // Ensure at least one category is selected
+    const categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
     
     const newServer = {
         id: Date.now(), // Simple ID generation
         name,
         address,
-        category,
+        categories,
         type,
         status: 'active',
         description: description || '',
