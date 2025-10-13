@@ -217,13 +217,13 @@ function closeEditModal() {
 }
 
 // ----------------------------------------------------------------------
-// NEW HELPER: Normalizes server address by removing protocol and trailing slash
+// HELPER: Normalizes server address by removing protocol and trailing slash
 // ----------------------------------------------------------------------
 function normalizeAddress(address) {
     if (!address) return '';
     let normalized = address.toLowerCase().trim();
     
-    // Remove protocol (http://, https://, ftp://)
+    // Remove protocol (http://, https://://, ftp://)
     normalized = normalized.replace(/^(https?|ftp):\/\//i, '');
     
     // Remove trailing slash
@@ -233,15 +233,19 @@ function normalizeAddress(address) {
 }
 
 // ----------------------------------------------------------------------
-// MODIFIED HELPER: Uses normalizeAddress for protocol-agnostic comparison
+// FIX: Uses String() comparison for IDs to ensure edited server is excluded
 // ----------------------------------------------------------------------
 function isAddressDuplicateInAnyCategory(address, categories, currentId = null) {
     const normalizedNewAddress = normalizeAddress(address);
     if (!normalizedNewAddress) return false;
 
+    // Convert the ID being edited to a string for safe comparison
+    const currentIdStr = currentId ? String(currentId) : null;
+
     return servers.some(existingServer => {
         // 1. Ignore the server being edited
-        if (currentId && existingServer.id === currentId) {
+        // CRITICAL FIX: Ensure both IDs are compared as strings to avoid type-coercion bugs
+        if (currentIdStr && String(existingServer.id) === currentIdStr) {
             return false;
         }
         
@@ -271,32 +275,14 @@ function saveEditChanges() {
 
             const newAddress = document.getElementById('editServerAddress').value;
 
-            // --- START FIX: Only perform duplicate check if address or category changes ---
-            const originalNormalizedAddress = normalizeAddress(server.address);
-            const newNormalizedAddress = normalizeAddress(newAddress);
-            
-            // Compare categories by sorting and joining them into a string for reliable comparison
-            const originalCategoriesStr = (server.categories || []).sort().join(',');
-            const newCategoriesStr = newCategories.sort().join(',');
-            
-            // Check if the unique identifiers (Address or Categories) have actually changed
-            const uniqueIdentifiersChanged = (originalNormalizedAddress !== newNormalizedAddress) || (originalCategoriesStr !== newCategoriesStr);
-            
-            let isDuplicate = false;
-            if (uniqueIdentifiersChanged) {
-                // DUPLICATE CHECK: Only run the check if the address or categories are being modified.
-                if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
-                    isDuplicate = true;
-                }
-            }
-            
-            if (isDuplicate) {
+            // DUPLICATE CHECK: Now we rely only on the robust exclusion logic 
+            // inside isAddressDuplicateInAnyCategory to skip the server being edited.
+            if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
                 showToast('Error: Duplicate server address found in a matching category!', 'error');
                 return;
             }
-            // --- END FIX ---
 
-            // If not duplicate (or check was skipped), save changes
+            // If not duplicate, save changes
             server.name = document.getElementById('editServerName').value;
             server.address = newAddress;
             server.status = document.getElementById('editStatus').value;
