@@ -19,8 +19,10 @@ function renderServerList(category) {
     
     let filteredServers = servers;
     
+    // NOTE: Filtering by category on the settings page needs refinement 
+    // to handle the categories array. For now, it filters by the first category.
     if (category !== 'all') {
-        filteredServers = servers.filter(server => server.category === category);
+        filteredServers = servers.filter(server => server.categories && server.categories.includes(category));
     }
     
     // Sort by current rank
@@ -42,13 +44,16 @@ function renderServerList(category) {
         listItem.className = 'server-list-item';
         listItem.setAttribute('data-id', server.id);
         
+        // FIX: Safely display the first category from the categories array
+        const primaryCategory = server.categories && server.categories.length > 0 ? server.categories[0] : 'others';
+
         listItem.innerHTML = `
             <div class="server-rank-number">${index + 1}</div>
             <div class="server-list-info">
                 <div class="server-list-name">${server.name}</div>
                 <div class="server-list-address">${server.address}</div>
             </div>
-            <div class="server-list-category">${getCategoryDisplayName(server.category)}</div>
+            <div class="server-list-category">${getCategoryDisplayName(primaryCategory)}</div>
             <div class="rank-controls">
                 <button class="rank-btn" onclick="moveServerUp(${server.id})" ${index === 0 ? 'disabled' : ''}>
                     <i class="fas fa-arrow-up"></i>
