@@ -781,3 +781,59 @@ footer {
         justify-content: center;
     }
 }
+
+/* --- HEADER ADD SERVER & MANAGE DROPDOWN --- */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: rgba(26,26,46,0.95);
+    min-width: 220px;
+    padding: 0.5rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 500;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.dropdown:hover .dropdown-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.panel {
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-left: 0.25rem;
+}
+
+.panel textarea {
+    height: 100px;
+    resize: vertical;
+}
+
+/* Responsive adjustment */
+@media (max-width: 768px) {
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .dropdown-content {
+        position: static;
+        width: 100%;
+    }
+    
+    .panel textarea {
+        width: 100%;
+    }
+}
