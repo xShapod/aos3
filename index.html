@@ -15,44 +15,13 @@
                     <i class="fas fa-satellite-dish"></i>
                     <h1>ISP Media Hub</h1>
                 </div>
-                
                 <div class="header-actions">
-                    <!-- Manage Servers Dropdown -->
-                    <div class="dropdown">
-                        <button class="btn btn-info">
-                            Manage Servers <i class="fas fa-caret-down"></i>
-                        </button>
-                        <div class="dropdown-content">
-                            <button class="btn btn-success" id="openAddServerModal">
-                                <i class="fas fa-plus-circle"></i> Add New Server
-                            </button>
-                            <button class="btn btn-primary" id="exportBtn">
-                                <i class="fas fa-file-export"></i> Export Servers
-                            </button>
-                            <button class="btn btn-warning" id="importBtn">
-                                <i class="fas fa-file-import"></i> Import Servers
-                            </button>
-                            <button class="btn btn-primary" id="downloadBtn">
-                                <i class="fas fa-download"></i> Download Backup
-                            </button>
-                            <button class="btn btn-primary" id="uploadBtn">
-                                <i class="fas fa-upload"></i> Upload Backup
-                            </button>
-                            <button class="btn btn-secondary" id="importUrlBtn">
-                                <i class="fas fa-link"></i> Import from URL
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Search Servers -->
-                    <div class="search">
-                        <input type="text" class="form-control" placeholder="Search servers..." id="searchInput">
-                    </div>
-
-                    <!-- Settings Button -->
                     <button class="btn btn-info" id="settingsBtn">
                         <i class="fas fa-cog"></i> Settings
                     </button>
+                    <div class="search">
+                        <input type="text" class="form-control" placeholder="Search servers..." id="searchInput">
+                    </div>
                 </div>
             </div>
         </div>
@@ -78,22 +47,28 @@
         
         <div class="category-tabs">
             <div class="tab active" data-category="all">
-                <i class="fas fa-globe"></i> All Servers
+                <i class="fas fa-globe"></i>
+                All Servers
             </div>
             <div class="tab" data-category="favorites">
-                <i class="fas fa-star"></i> Favorites
+                <i class="fas fa-star"></i>
+                Favorites
             </div>
             <div class="tab" data-category="live">
-                <i class="fas fa-tv"></i> Live TV
+                <i class="fas fa-tv"></i>
+                Live TV
             </div>
             <div class="tab" data-category="movies">
-                <i class="fas fa-film"></i> Movies
+                <i class="fas fa-film"></i>
+                Movies
             </div>
             <div class="tab" data-category="series">
-                <i class="fas fa-play-circle"></i> Series
+                <i class="fas fa-play-circle"></i>
+                Series
             </div>
             <div class="tab" data-category="others">
-                <i class="fas fa-folder"></i> Others
+                <i class="fas fa-folder"></i>
+                Others
             </div>
         </div>
         
@@ -101,12 +76,78 @@
             <!-- Server cards will be dynamically inserted here -->
         </div>
         
+        <div class="add-server-section">
+            <h3><i class="fas fa-plus-circle"></i> Add New Server</h3>
+            <form id="serverForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="serverName">Server Name</label>
+                        <input type="text" class="form-control" id="serverName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverAddress">Server Address</label>
+                        <input type="text" class="form-control" id="serverAddress" placeholder="http:// or ftp:// address" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categories (Select multiple)</label>
+                        <div class="categories-checkboxes">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="live"> Live TV
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="movies"> Movies
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="series"> Series
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serverCategories" value="others"> Others
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverType">Server Type</label>
+                        <select class="form-control" id="serverType" required>
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="serverDescription">Description (Optional)</label>
+                    <input type="text" class="form-control" id="serverDescription">
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save"></i> Add Server
+                </button>
+            </form>
+            
+            <div class="import-export-section">
+                <button class="btn btn-info" id="exportBtn">
+                    <i class="fas fa-file-export"></i> Export Servers
+                </button>
+                <button class="btn btn-warning" id="importBtn">
+                    <i class="fas fa-file-import"></i> Import Servers
+                </button>
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+                <button class="btn btn-primary" id="uploadBtn">
+                    <i class="fas fa-upload"></i> Upload Backup
+                </button>
+                <button class="btn btn-secondary" id="importUrlBtn">
+                    <i class="fas fa-link"></i> Import from URL
+                </button>
+            </div>
+        </div>
+        
         <footer>
             <p>ISP Media Hub &copy; 2023 | Your Local Media Directory</p>
         </footer>
     </div>
 
-    <!-- Add/Edit/Import/Export Modals (unchanged) -->
     <!-- Export/Import Modal -->
     <div class="modal" id="exportImportModal">
         <div class="modal-content">
@@ -220,6 +261,7 @@
 
     <!-- Hidden file input for upload -->
     <input type="file" id="fileUpload" accept=".json" style="display: none;">
+
     <div class="toast" id="toast"></div>
 
     <script src="app.js"></script>
