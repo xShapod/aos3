@@ -661,7 +661,7 @@ footer {
     cursor: not-allowed;
 }
 
-/* === IMPORT/EXPORT TEXTAREA STYLES === */
+/* === NEW IMPORT/EXPORT TEXTAREA STYLES === */
 .export-data:not([readonly]) {
     background: rgba(255, 255, 255, 0.1) !important;
     border: 1px solid var(--primary) !important;
@@ -767,34 +767,12 @@ footer {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .server-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-row {
+    .categories-checkboxes {
         flex-direction: column;
-        gap: 0;
+        gap: 0.5rem;
     }
     
-    .header-content {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    
-    .header-actions {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .banner h2 {
-        font-size: 1.8rem;
-    }
-    
-    .import-export-section {
-        flex-direction: column;
-    }
-    
-    .sort-options {
+    .server-categories {
         justify-content: center;
     }
 }
