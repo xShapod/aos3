@@ -144,18 +144,6 @@ header {
     background: var(--primary);
 }
 
-/* NEW: Verify All Bar */
-.verify-all-bar {
-    display: flex;
-    justify-content: flex-end; /* Pushes the button to the right */
-    margin: 1rem 0;
-}
-
-.verify-all-bar .btn-warning {
-    color: var(--dark); /* Ensures text is visible on the warning button */
-    font-weight: 600;
-}
-
 /* SERVER GRID STYLES */
 .server-grid {
     display: grid;
@@ -228,19 +216,11 @@ header {
     flex-grow: 1;
 }
 
-/* New: Last Verified Timestamp */
-.server-last-verified {
-    font-size: 0.75rem;
-    color: var(--gray); /* Use the defined grey color */
-    margin-bottom: 0.5rem;
-    padding-top: 0.5rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.05); /* Separator line */
-}
-
 /* Server Actions Styles */
 .server-actions {
     display: flex;
     gap: 0.5rem;
+    margin-top: 0.5rem; /* Add margin to keep buttons separated from description/categories */
 }
 
 .btn {
