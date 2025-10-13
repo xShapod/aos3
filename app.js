@@ -280,7 +280,8 @@ function saveEditChanges() {
             const newNormalizedAddress = normalizeAddress(newAddress);
             
             // Compare categories by sorting and joining them into a string for reliable comparison
-            const originalCategoriesStr = (server.categories || []).sort().join(',');
+            // Defensive check for Array.isArray added for robustness
+            const originalCategoriesStr = (Array.isArray(server.categories) ? server.categories : []).sort().join(',');
             const newCategoriesStr = newCategories.sort().join(',');
             
             // Check if the unique identifiers (Address or Categories) have actually changed
