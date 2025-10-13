@@ -223,7 +223,7 @@ function normalizeAddress(address) {
     if (!address) return '';
     let normalized = address.toLowerCase().trim();
     
-    // Remove protocol (http://, https://://, ftp://)
+    // Remove protocol (http://, https://, ftp://)
     normalized = normalized.replace(/^(https?|ftp):\/\//i, '');
     
     // Remove trailing slash
@@ -275,14 +275,33 @@ function saveEditChanges() {
 
             const newAddress = document.getElementById('editServerAddress').value;
 
-            // DUPLICATE CHECK: Now we rely only on the robust exclusion logic 
-            // inside isAddressDuplicateInAnyCategory to skip the server being edited.
-            if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
+            // --- START CRITICAL FIX: Only perform duplicate check if unique identifiers change ---
+            const originalNormalizedAddress = normalizeAddress(server.address);
+            const newNormalizedAddress = normalizeAddress(newAddress);
+            
+            // Compare categories by sorting and joining them into a string for reliable comparison
+            const originalCategoriesStr = (server.categories || []).sort().join(',');
+            const newCategoriesStr = newCategories.sort().join(',');
+            
+            // Check if the unique identifiers (Address or Categories) have actually changed
+            const uniqueIdentifiersChanged = (originalNormalizedAddress !== newNormalizedAddress) || (originalCategoriesStr !== newCategoriesStr);
+            
+            let isDuplicate = false;
+            if (uniqueIdentifiersChanged) {
+                // DUPLICATE CHECK: Only run the check if the address or categories are being modified.
+                if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
+                    isDuplicate = true;
+                }
+            }
+            
+            if (isDuplicate) {
                 showToast('Error: Duplicate server address found in a matching category!', 'error');
                 return;
             }
+            // --- END CRITICAL FIX ---
 
-            // If not duplicate, save changes
+
+            // If not duplicate (or check was skipped), save changes
             server.name = document.getElementById('editServerName').value;
             server.address = newAddress;
             server.status = document.getElementById('editStatus').value;
