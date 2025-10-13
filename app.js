@@ -217,13 +217,27 @@ function closeEditModal() {
 }
 
 // ----------------------------------------------------------------------
-// NEW HELPER FUNCTION FOR DUPLICATE CHECKING
-// Checks if the given address is already in use by a server that shares
-// at least one category with the provided list.
+// NEW HELPER: Normalizes server address by removing protocol and trailing slash
+// ----------------------------------------------------------------------
+function normalizeAddress(address) {
+    if (!address) return '';
+    let normalized = address.toLowerCase().trim();
+    
+    // Remove protocol (http://, https://, ftp://)
+    normalized = normalized.replace(/^(https?|ftp):\/\//i, '');
+    
+    // Remove trailing slash
+    normalized = normalized.replace(/\/$/, '');
+    
+    return normalized;
+}
+
+// ----------------------------------------------------------------------
+// MODIFIED HELPER: Uses normalizeAddress for protocol-agnostic comparison
 // ----------------------------------------------------------------------
 function isAddressDuplicateInAnyCategory(address, categories, currentId = null) {
-    const trimmedAddress = address.trim();
-    if (!trimmedAddress) return false;
+    const normalizedNewAddress = normalizeAddress(address);
+    if (!normalizedNewAddress) return false;
 
     return servers.some(existingServer => {
         // 1. Ignore the server being edited
@@ -231,8 +245,9 @@ function isAddressDuplicateInAnyCategory(address, categories, currentId = null) 
             return false;
         }
         
-        // 2. Address must match
-        if (existingServer.address.trim() !== trimmedAddress) {
+        // 2. Address must match after normalization
+        const normalizedExistingAddress = normalizeAddress(existingServer.address);
+        if (normalizedExistingAddress !== normalizedNewAddress) {
             return false;
         }
 
@@ -487,7 +502,7 @@ async function importFromURL() {
     }
 }
 
-// Show export modal (No change)
+// Show export modal
 function showExportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -504,7 +519,7 @@ function showExportModal() {
     modal.style.display = 'flex';
 }
 
-// Show import modal (No change)
+// Show import modal
 function showImportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -526,12 +541,12 @@ function showImportModal() {
     }, 100);
 }
 
-// Close modal (No change)
+// Close modal
 function closeModal() {
     document.getElementById('exportImportModal').style.display = 'none';
 }
 
-// Copy export data to clipboard (No change)
+// Copy export data to clipboard
 function copyExportData() {
     const exportData = document.getElementById('exportData');
     exportData.select();
@@ -539,7 +554,7 @@ function copyExportData() {
     showToast('Server data copied to clipboard!');
 }
 
-// Download backup file (No change)
+// Download backup file
 function downloadBackup() {
     const dataStr = JSON.stringify(servers, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
@@ -556,7 +571,7 @@ function downloadBackup() {
     showToast('Backup file downloaded successfully!');
 }
 
-// Trigger file upload (No change)
+// Trigger file upload
 function triggerUpload() {
     document.getElementById('fileUpload').click();
 }
@@ -624,7 +639,7 @@ function handleFileUpload(event) {
     event.target.value = '';
 }
 
-// Replace all servers with imported data (No change, as replace overwrites everything)
+// Replace all servers with imported data
 function replaceServers() {
     const exportData = document.getElementById('exportData');
     try {
@@ -736,7 +751,7 @@ function addServer() {
     showToast(`Server "${name}" added successfully!`);
 }
 
-// Delete a server (No change)
+// Delete a server
 function deleteServer(id) {
     if (confirm('Are you sure you want to delete this server?')) {
         const serverName = servers.find(server => server.id === id).name;
@@ -754,7 +769,7 @@ function deleteServer(id) {
     }
 }
 
-// Connect to server - ACTUALLY OPENS THE URL (No change)
+// Connect to server - ACTUALLY OPENS THE URL
 function connectToServer(address) {
     showToast(`Opening: ${address}`);
     
@@ -771,7 +786,7 @@ function connectToServer(address) {
     }
 }
 
-// Show toast notification (No change)
+// Show toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -784,7 +799,7 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Save servers to localStorage (No change)
+// Save servers to localStorage
 function saveServers() {
     localStorage.setItem('ispServers', JSON.stringify(servers));
 }
