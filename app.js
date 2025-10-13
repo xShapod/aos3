@@ -80,7 +80,7 @@ function renderServers(category, sortBy) {
         if (category === 'favorites') {
             filteredServers = servers.filter(server => server.isFavorite);
         } else {
-            filteredServers = servers.filter(server => server.categories.includes(category));
+            filteredServers = filteredServers.filter(server => server.categories.includes(category));
         }
     }
     
@@ -313,6 +313,7 @@ function setupEventListeners() {
         document.getElementById('importUrlModal').style.display = 'none';
     });
     
+    // Link the confirm button to the new importFromURL function
     document.getElementById('confirmImportUrl').addEventListener('click', importFromURL);
     
     document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -342,8 +343,12 @@ function setupEventListeners() {
     });
 }
 
+// ----------------------------------------------------------------------
+// MODIFIED FUNCTION: Correctly fetches and processes an array of servers from URL
+// ----------------------------------------------------------------------
+
 // Import from URL function
-function importFromURL() {
+async function importFromURL() {
     const url = document.getElementById('importUrl').value;
     const method = document.querySelector('input[name="importMethod"]:checked').value;
     
@@ -353,46 +358,62 @@ function importFromURL() {
     }
     
     showToast('Downloading server list...');
-    
-    // NOTE: In a real-world scenario, you would use 'fetch(url)' here. 
-    // This is a placeholder for the logic that follows a successful download.
-    setTimeout(() => {
-        try {
-            const importedServers = [
-                {
-                    id: Date.now() + 1,
-                    name: "Imported Live Server",
-                    address: "http://imported.live.server.com",
-                    categories: ["live"],
-                    type: "bdix",
-                    status: "inactive",
-                    description: "",
-                    rank: servers.length + 1,
-                    createdAt: Date.now(),
-                    isFavorite: false,
-                }
-            ];
-            
-            if (method === 'replace') {
-                servers = importedServers;
-                showToast('All servers replaced from URL!');
-            } else {
-                // Merge and avoid duplicates by address
-                const serverMap = new Map();
-                servers.forEach(server => serverMap.set(server.address, server));
-                importedServers.forEach(server => serverMap.set(server.address, {...server, id: Date.now() + Math.random()})); // Ensure unique IDs
-                servers = Array.from(serverMap.values());
-                showToast('Servers merged from URL!');
-            }
-            
-            saveServers();
-            renderServers(currentCategory, currentSort);
-            document.getElementById('importUrlModal').style.display = 'none';
-        } catch (e) {
-            showToast('Error importing from URL!', 'error');
+
+    try {
+        // 1. Fetch the data from the provided URL
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            // Throw an error for non-200 responses
+            throw new Error(`Failed to fetch URL: HTTP ${response.status}`);
         }
-    }, 2000);
+        
+        let importedServers = await response.json();
+        
+        // 2. Validate that the imported data is a JSON array (a proper backup)
+        if (!Array.isArray(importedServers)) {
+            throw new Error('Imported data is not a valid server list (expected a JSON array).');
+        }
+
+        // 3. Prepare imported servers (Assign new unique IDs to avoid clashes)
+        importedServers = importedServers.map(server => ({
+            ...server,
+            id: Date.now() + Math.random(), // Assign a fresh, unique ID
+            description: server.description || '',
+            categories: server.categories || ['others']
+        }));
+        
+        // 4. Apply Replace or Merge logic
+        if (method === 'replace') {
+            servers = importedServers;
+            showToast(`All servers replaced from URL! Loaded ${servers.length} entries.`);
+        } else {
+            // Merge logic (avoid duplicates by address)
+            const serverMap = new Map();
+            // Add existing servers
+            servers.forEach(server => serverMap.set(server.address, server));
+            // Add/overwrite with imported servers
+            importedServers.forEach(server => serverMap.set(server.address, server)); 
+            
+            servers = Array.from(serverMap.values());
+            showToast(`Servers merged from URL! Total servers: ${servers.length}.`);
+        }
+        
+        // 5. Finalize
+        saveServers();
+        renderServers(currentCategory, currentSort);
+        document.getElementById('importUrlModal').style.display = 'none';
+        
+    } catch (e) {
+        // Handle network or parsing errors
+        console.error('Import Failed:', e);
+        showToast(`Error importing from URL: ${e.message}`, 'error');
+    }
 }
+
+// ----------------------------------------------------------------------
+// REST OF THE ORIGINAL CODE (Unchanged)
+// ----------------------------------------------------------------------
 
 // Show export modal
 function showExportModal() {
