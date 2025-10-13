@@ -1,4 +1,4 @@
-// Sample data for demonstration
+// Sample data for demonstration (MODIFIED: Descriptions and verification fields removed)
 let servers = [
     {
         id: 1,
@@ -7,11 +7,10 @@ let servers = [
         categories: ["live"],
         type: "bdix",
         status: "active",
-        description: "High-definition live sports channels",
+        description: "", // Now empty
         rank: 1,
         createdAt: new Date('2023-01-15').getTime(),
         isFavorite: false,
-        lastVerified: new Date('2024-10-14T08:00:00').getTime() // NEW FIELD
     },
     {
         id: 2,
@@ -20,11 +19,10 @@ let servers = [
         categories: ["movies"],
         type: "bdix",
         status: "active",
-        description: "Large collection of movies from various genres",
+        description: "", // Now empty
         rank: 2,
         createdAt: new Date('2023-02-20').getTime(),
         isFavorite: false,
-        lastVerified: new Date('2024-10-14T09:30:00').getTime() // NEW FIELD
     },
     {
         id: 3,
@@ -33,11 +31,10 @@ let servers = [
         categories: ["series"],
         type: "non-bdix",
         status: "inactive",
-        description: "Complete seasons of popular TV series",
+        description: "", // Now empty
         rank: 3,
         createdAt: new Date('2023-03-10').getTime(),
         isFavorite: false,
-        lastVerified: new Date('2024-10-14T10:15:00').getTime() // NEW FIELD
     }
 ];
 
@@ -50,13 +47,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
-        // Ensure all servers have categories array and lastVerified (backward compatibility)
+        // Clean up old fields (for a clean migration from previous versions)
         servers.forEach(server => {
             if (!server.categories) {
                 server.categories = [server.category || 'others'];
             }
-            if (server.lastVerified === undefined) {
-                server.lastVerified = null;
+            // Remove lastVerified field and ensure description is a string
+            if (server.lastVerified !== undefined) {
+                delete server.lastVerified;
+            }
+            if (!server.description) {
+                server.description = '';
             }
         });
     } else {
@@ -95,9 +96,6 @@ function renderServers(category, sortBy) {
     // Sort servers
     filteredServers = sortServers(filteredServers, sortBy);
     
-    // Show/Hide Verify All button
-    document.getElementById('verifyAllBtn').style.display = filteredServers.length > 0 ? 'inline-flex' : 'none';
-    
     if (filteredServers.length === 0) {
         serverGrid.innerHTML = `
             <div class="empty-state">
@@ -113,10 +111,6 @@ function renderServers(category, sortBy) {
         const serverCard = document.createElement('div');
         serverCard.className = 'server-card';
         serverCard.setAttribute('data-id', server.id);
-        
-        const lastVerifiedTime = server.lastVerified 
-            ? new Date(server.lastVerified).toLocaleString() 
-            : 'Never';
         
         serverCard.innerHTML = `
             <div class="edit-icon" onclick="openEditModal(${server.id})">
@@ -142,11 +136,7 @@ function renderServers(category, sortBy) {
                     ${server.categories.map(cat => `<span class="server-category">${getCategoryDisplayName(cat)}</span>`).join('')}
                 </div>
             ` : ''}
-            <div class="server-last-verified">Last Verified: ${lastVerifiedTime}</div>
             <div class="server-actions">
-                <button class="btn btn-warning" onclick="verifyServer(${server.id})">
-                    <i class="fas fa-sync-alt"></i> Verify
-                </button>
                 <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
                     <i class="fas fa-external-link-alt"></i> Open
                 </button>
@@ -197,83 +187,8 @@ function toggleFavorite(serverId) {
     }
 }
 
-// FIX: New function to handle manual server verification
-function verifyServer(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server) return;
-
-    // 1. Open in new tab
-    window.open(server.address, '_blank');
-
-    // 2. Wait and prompt user for confirmation
-    setTimeout(() => {
-        const confirmed = confirm(`Verification: Was "${server.name}" accessible in the new tab? \n\n(Click 'OK' for ACTIVE, 'Cancel' for INACTIVE)`);
-        
-        if (confirmed) {
-            server.status = 'active';
-            showToast(`Server "${server.name}" status updated to ACTIVE!`);
-        } else {
-            server.status = 'inactive';
-            showToast(`Server "${server.name}" status updated to INACTIVE!`, 'warning');
-        }
-        
-        server.lastVerified = Date.now();
-        
-        saveServers();
-        renderServers(currentCategory, currentSort);
-    }, 500); // 500ms delay for user to switch and see the new tab
-}
-
-// NEW: Function to verify all servers
-function verifyAllServers() {
-    if (!confirm('Are you sure you want to verify all servers? This will open a new tab and prompt you for the status of each server, one by one.')) {
-        return;
-    }
-    
-    let serversToVerify = servers.slice().sort((a, b) => a.rank - b.rank); 
-    
-    function verifyNext(index) {
-        if (index >= serversToVerify.length) {
-            saveServers();
-            renderServers(currentCategory, currentSort);
-            showToast('All servers verified or verification cycle finished.');
-            return;
-        }
-        
-        const server = serversToVerify[index];
-        
-        // Open in new tab
-        const newWindow = window.open(server.address, '_blank');
-        
-        // Simple confirmation loop
-        setTimeout(() => {
-            const confirmed = confirm(`Verification ${index + 1}/${serversToVerify.length}: Was "${server.name}" accessible? \n\n(Click 'OK' for ACTIVE, 'Cancel' for INACTIVE)`);
-            
-            if (confirmed) {
-                server.status = 'active';
-            } else {
-                server.status = 'inactive';
-            }
-            server.lastVerified = Date.now();
-            
-            showToast(`"${server.name}" set to ${server.status.toUpperCase()}. Moving to next...`);
-
-            // Try to close the tab
-            try {
-                if (newWindow && !newWindow.closed) {
-                    newWindow.close();
-                }
-            } catch (e) {
-                // Ignore error if close is blocked
-            }
-            
-            // Proceed to the next server
-            verifyNext(index + 1);
-        }, 3000); // Give the user 3 seconds to check the tab before the next prompt.
-    }
-    
-    verifyNext(0);
-}
+// REMOVED: verifyServer(serverId) function
+// REMOVED: verifyAllServers() function
 
 
 // Enhanced Open edit modal
@@ -292,7 +207,6 @@ function openEditModal(serverId) {
         // Populate categories checkboxes
         const categoryCheckboxes = document.querySelectorAll('#editModalBody input[name="editCategories"]');
         categoryCheckboxes.forEach(checkbox => {
-            // FIX: Ensure it handles if server.categories is null/undefined during migration
             checkbox.checked = server.categories && server.categories.includes(checkbox.value);
         });
         
@@ -306,7 +220,7 @@ function closeEditModal() {
     currentEditServerId = null;
 }
 
-// Enhanced Save edit changes (FIXES EDITING BUG)
+// Enhanced Save edit changes
 function saveEditChanges() {
     if (currentEditServerId) {
         const server = servers.find(s => s.id === currentEditServerId);
@@ -316,7 +230,8 @@ function saveEditChanges() {
             server.address = document.getElementById('editServerAddress').value;
             server.status = document.getElementById('editStatus').value;
             server.type = document.getElementById('editType').value;
-            server.description = document.getElementById('editDescription').value;
+            // Ensure description is an empty string if nothing is entered
+            server.description = document.getElementById('editDescription').value.trim() || ''; 
             
             // Get selected categories
             const selectedCategories = [];
@@ -324,8 +239,6 @@ function saveEditChanges() {
                 selectedCategories.push(checkbox.value);
             });
             server.categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
-            
-            // Preserve other properties like lastVerified, rank, etc.
             
             saveServers();
             renderServers(currentCategory, currentSort);
@@ -373,7 +286,7 @@ function setupEventListeners() {
         window.location.href = 'settings.html';
     });
 
-    // NEW: Manage Servers Modal Open/Close
+    // Manage Servers Modal Open/Close
     document.getElementById('manageServersBtn').addEventListener('click', function() {
         document.getElementById('manageServersModal').style.display = 'flex';
     });
@@ -382,8 +295,7 @@ function setupEventListeners() {
         document.getElementById('manageServersModal').style.display = 'none';
     });
 
-    // NEW: Verify All Button
-    document.getElementById('verifyAllBtn').addEventListener('click', verifyAllServers);
+    // REMOVED: Verify All Button listener
     
     // Export/Import buttons
     document.getElementById('exportBtn').addEventListener('click', showExportModal);
@@ -453,12 +365,11 @@ function importFromURL() {
                     address: "http://imported.live.server.com",
                     categories: ["live"],
                     type: "bdix",
-                    status: "active",
-                    description: "Imported from URL",
+                    status: "inactive",
+                    description: "",
                     rank: servers.length + 1,
                     createdAt: Date.now(),
                     isFavorite: false,
-                    lastVerified: null
                 }
             ];
             
@@ -663,7 +574,7 @@ function addServer() {
         selectedCategories.push(checkbox.value);
     });
     
-    // Ensure at least one category is selected
+    // Ensure at least one category is selected, or default to 'others'
     const categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
     
     const newServer = {
@@ -672,12 +583,11 @@ function addServer() {
         address,
         categories,
         type,
-        status: 'inactive', // Default to inactive until verified
-        description: description || '',
+        status: 'inactive', // Default to inactive
+        description: description.trim() || '', // Ensures description is optional/empty string
         rank: servers.length + 1,
         createdAt: Date.now(),
         isFavorite: false,
-        lastVerified: null // NEW FIELD
     };
     
     servers.push(newServer);
