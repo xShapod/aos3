@@ -16,6 +16,9 @@
                     <h1>ISP Media Hub</h1>
                 </div>
                 <div class="header-actions">
+                    <button class="btn btn-primary" id="manageServersBtn">
+                        <i class="fas fa-database"></i> Manage Servers
+                    </button>
                     <button class="btn btn-info" id="settingsBtn">
                         <i class="fas fa-cog"></i> Settings
                     </button>
@@ -37,198 +40,213 @@
                 <i class="fas fa-sort"></i> Manual Order
             </button>
             <button class="sort-btn" data-sort="name">
-                <i class="fas fa-font"></i> Name (A-Z)
+                <i class="fas fa-sort-alpha-down"></i> Name
             </button>
-            <button class="sort-btn" data-sort="newest">
-                <i class="fas fa-calendar-alt"></i> Recently Added
+            <button class="sort-btn" data-sort="recent">
+                <i class="fas fa-clock"></i> Recently Added
             </button>
-        </div>
-        
-        <div class="action-bar">
-            <div class="category-tabs">
-                <div class="tab active" data-category="all">
-                    <i class="fas fa-globe"></i>
-                    All
-                </div>
-                <div class="tab" data-category="favorites">
-                    <i class="fas fa-star"></i>
-                    Favorites
-                </div>
-                <div class="tab" data-category="live">
-                    <i class="fas fa-tv"></i>
-                    Live TV
-                </div>
-                <div class="tab" data-category="movies">
-                    <i class="fas fa-film"></i>
-                    Movies
-                </div>
-                <div class="tab" data-category="series">
-                    <i class="fas fa-play-circle"></i>
-                    Series
-                </div>
-                <div class="tab" data-category="others">
-                    <i class="fas fa-folder"></i>
-                    Others
-                </div>
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-primary" id="addServerBtn">
-                    <i class="fas fa-plus"></i> Add Server
-                </button>
-                <button class="btn btn-secondary" id="importExportBtn">
-                    <i class="fas fa-exchange-alt"></i> Data
-                </button>
-            </div>
         </div>
         
         <div class="verify-all-bar">
             <button class="btn btn-warning" id="verifyAllBtn">
-                <i class="fas fa-check-circle"></i> Verify All Active Servers
+                <i class="fas fa-check-double"></i> Verify All Servers
             </button>
+        </div>
+        
+        <div class="category-tabs">
+            <div class="tab active" data-category="all">
+                <i class="fas fa-globe"></i>
+                All Servers
+            </div>
+            <div class="tab" data-category="favorites">
+                <i class="fas fa-star"></i>
+                Favorites
+            </div>
+            <div class="tab" data-category="live">
+                <i class="fas fa-tv"></i>
+                Live TV
+            </div>
+            <div class="tab" data-category="movies">
+                <i class="fas fa-film"></i>
+                Movies
+            </div>
+            <div class="tab" data-category="series">
+                <i class="fas fa-play-circle"></i>
+                Series
+            </div>
+            <div class="tab" data-category="others">
+                <i class="fas fa-folder"></i>
+                Others
+            </div>
         </div>
         
         <div class="server-grid" id="serverGrid">
             </div>
+        
+        <footer>
+            <p>ISP Media Hub &copy; 2023 | Your Local Media Directory</p>
+        </footer>
     </div>
 
-    <div class="modal" id="addModal">
+    <div class="modal" id="manageServersModal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('addModal')">&times;</span>
-            <h2><i class="fas fa-plus-circle"></i> Add New Server</h2>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="serverName">Server Name *</label>
-                    <input type="text" class="form-control" id="serverName" placeholder="e.g. Dhaka Movie Server">
-                </div>
-                <div class="form-group">
-                    <label for="serverAddress">Server Address *</label>
-                    <input type="text" class="form-control" id="serverAddress" placeholder="e.g. http://10.10.10.10 or ftp://domain.com">
-                </div>
-                <div class="form-group">
-                    <label>Server Type *</label>
-                    <div class="radio-options">
-                        <label class="radio-label">
-                            <input type="radio" name="serverType" value="bdix" checked> BDIX (Local/ISP Only)
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="serverType" value="non-bdix"> Non-BDIX (Public/Global)
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Categories * (Select one or more)</label>
-                    <div class="categories-checkboxes">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="addCategories" value="live"> Live TV
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="addCategories" value="movies"> Movies
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="addCategories" value="series"> Series
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="addCategories" value="others"> Others
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="serverDescription">Description (Optional)</label>
-                    <textarea class="form-control" id="serverDescription" rows="3" placeholder="Brief description of the server content"></textarea>
-                </div>
-                <button class="btn btn-success" id="saveServer" style="width: 100%;">
-                    <i class="fas fa-save"></i> Save Server
-                </button>
+            <div class="modal-header">
+                <h3><i class="fas fa-database"></i> Manage Servers</h3>
+                <button class="close-modal" id="closeManageModal">&times;</button>
             </div>
-        </div>
-    </div>
-
-    <div class="modal" id="importExportModal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('importExportModal')">&times;</span>
-            <h2><i class="fas fa-exchange-alt"></i> Data Management</h2>
-            <div class="modal-body">
-                
-                <h3>Export Data (Backup)</h3>
-                <div class="form-group">
-                    <textarea class="form-control" id="exportDataArea" rows="6" readonly placeholder="Your server data will appear here..."></textarea>
-                </div>
-                <div class="import-export-section">
-                    <button class="btn btn-primary" id="copyDataBtn">
-                        <i class="fas fa-copy"></i> Copy Data
+            
+            <div class="add-server-section" style="border: none; margin-top: 0; padding: 0;">
+                <h4><i class="fas fa-plus-circle"></i> Add New Server</h4>
+                <form id="serverForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="serverName">Server Name</label>
+                            <input type="text" class="form-control" id="serverName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="serverAddress">Server Address</label>
+                            <input type="text" class="form-control" id="serverAddress" placeholder="http:// or ftp:// address" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Categories (Select multiple)</label>
+                            <div class="categories-checkboxes">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="live"> Live TV
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="movies"> Movies
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="series"> Series
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="others"> Others
+                                </label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="serverType">Server Type</label>
+                            <select class="form-control" id="serverType" required>
+                                <option value="bdix">BDIX</option>
+                                <option value="non-bdix">Non-BDIX</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="serverDescription">Description (Optional)</label>
+                        <input type="text" class="form-control" id="serverDescription">
+                    </div>
+                    <button type="submit" class="btn btn-success" style="width: 100%;">
+                        <i class="fas fa-save"></i> Add Server
                     </button>
-                    <button class="btn btn-info" id="downloadJsonBtn">
-                        <i class="fas fa-download"></i> Download JSON
-                    </button>
-                </div>
+                </form>
+            </div>
 
-                <hr style="margin: 1.5rem 0; border-color: rgba(255, 255, 255, 0.1);">
-
-                <h3>Import Data (Restore/Merge)</h3>
-                <p>Paste JSON data below or upload a file. Existing servers will be kept, new servers will be added.</p>
-                <div class="form-group">
-                    <textarea class="form-control" id="importDataArea" rows="6" placeholder="Paste server JSON data here..."></textarea>
-                </div>
-                <div class="import-export-section">
-                    <button class="btn btn-success" id="importDataBtn">
-                        <i class="fas fa-file-import"></i> Import & Merge
-                    </button>
-                    <button class="btn btn-secondary" id="uploadJsonBtn">
-                        <i class="fas fa-upload"></i> Upload JSON File
-                    </button>
-                </div>
-
-                <hr style="margin: 1.5rem 0; border-color: rgba(255, 255, 255, 0.1);">
-                
-                <h3>Import from URL (Live Update)</h3>
-                <div class="form-group">
-                    <input type="text" class="form-control" id="importUrlInput" placeholder="Enter a public URL for JSON data">
-                </div>
-                <button class="btn btn-success" id="importUrlBtn" style="width: 100%;">
+            <h4 style="margin-top: 2rem;"><i class="fas fa-exchange-alt"></i> Data Management</h4>
+            <div class="import-export-section" style="margin-top: 1rem;">
+                <button class="btn btn-info" id="exportBtn">
+                    <i class="fas fa-file-export"></i> Export Data
+                </button>
+                <button class="btn btn-warning" id="importBtn">
+                    <i class="fas fa-file-import"></i> Import Data
+                </button>
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+                <button class="btn btn-primary" id="uploadBtn">
+                    <i class="fas fa-upload"></i> Upload Backup
+                </button>
+                <button class="btn btn-secondary" id="importUrlBtn">
                     <i class="fas fa-link"></i> Import from URL
                 </button>
-                
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="exportImportModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Export Servers</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <div id="modalBody">
+                <textarea class="export-data" id="exportData" readonly></textarea>
+                <div class="import-actions" id="importActions" style="display: none;">
+                    <button class="btn btn-danger" id="replaceData">
+                        <i class="fas fa-exchange-alt"></i> Replace All
+                    </button>
+                    <button class="btn btn-success" id="mergeData">
+                        <i class="fas fa-plus-circle"></i> Merge
+                    </button>
+                </div>
+                <button class="btn btn-primary" id="copyData" style="width: 100%;">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="modal" id="editModal">
+    <div class="modal" id="importUrlModal">
         <div class="modal-content">
-            <span class="close-btn" onclick="closeModal('editModal')">&times;</span>
-            <h2><i class="fas fa-edit"></i> Edit Server</h2>
+            <div class="modal-header">
+                <h3>Import from URL</h3>
+                <button class="close-modal" id="closeUrlModal">&times;</button>
+            </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label for="editName">Server Name *</label>
-                    <input type="text" class="form-control" id="editName">
+                    <label for="importUrl">Server List URL</label>
+                    <input type="url" class="form-control" id="importUrl" placeholder="https://example.com/servers.json">
                 </div>
                 <div class="form-group">
-                    <label for="editAddress">Server Address *</label>
-                    <input type="text" class="form-control" id="editAddress">
+                    <label for="importMethod">
+                        <input type="radio" name="importMethod" value="replace" checked> Replace All
+                    </label>
+                    <label for="importMethod">
+                        <input type="radio" name="importMethod" value="merge"> Merge
+                    </label>
+                </div>
+                <button class="btn btn-success" id="confirmImportUrl" style="width: 100%;">
+                    <i class="fas fa-download"></i> Import from URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="editServerModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="editModalTitle">Edit Server</h3>
+                <button class="close-modal" id="closeEditModal">&times;</button>
+            </div>
+            <div id="editModalBody">
+                <div class="form-group">
+                    <label for="editServerName">Server Name</label>
+                    <input type="text" class="form-control" id="editServerName" required>
                 </div>
                 <div class="form-group">
-                    <label>Server Type *</label>
-                    <div class="radio-options">
-                        <label class="radio-label">
-                            <input type="radio" name="editServerType" value="bdix"> BDIX (Local/ISP Only)
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="editServerType" value="non-bdix"> Non-BDIX (Public/Global)
-                        </label>
+                    <label for="editServerAddress">Server Address</label>
+                    <input type="text" class="form-control" id="editServerAddress" required>
+                </div>
+                <div class="edit-modal-options">
+                    <div class="edit-option">
+                        <label>Server Status:</label>
+                        <select id="editStatus" class="form-control" style="width: auto;">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="edit-option">
+                        <label>Server Type:</label>
+                        <select id="editType" class="form-control" style="width: auto;">
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Status *</label>
-                    <div class="radio-options">
-                        <label class="radio-label">
-                            <input type="radio" name="editStatus" value="active"> Active
-                        </label>
-                        <label class="radio-label">
-                            <input type="radio" name="editStatus" value="inactive"> Inactive
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Categories * (Select one or more)</label>
+                    <label>Categories (Select multiple)</label>
                     <div class="categories-checkboxes">
                         <label class="checkbox-label">
                             <input type="checkbox" name="editCategories" value="live"> Live TV
