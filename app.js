@@ -187,10 +187,6 @@ function toggleFavorite(serverId) {
     }
 }
 
-// REMOVED: verifyServer(serverId) function
-// REMOVED: verifyAllServers() function
-
-
 // Enhanced Open edit modal
 function openEditModal(serverId) {
     const server = servers.find(s => s.id === serverId);
@@ -295,8 +291,6 @@ function setupEventListeners() {
         document.getElementById('manageServersModal').style.display = 'none';
     });
 
-    // REMOVED: Verify All Button listener
-    
     // Export/Import buttons
     document.getElementById('exportBtn').addEventListener('click', showExportModal);
     document.getElementById('importBtn').addEventListener('click', showImportModal);
@@ -343,8 +337,45 @@ function setupEventListeners() {
     });
 }
 
+/**
+ * Parses the raw text content of a .txt file into an array of server objects.
+ * Format expected: Server Name\nServer Address\n\nServer Name 2\nServer Address 2\n
+ * @param {string} text The raw content of the .txt file.
+ * @returns {Array<Object>} An array of new server objects.
+ */
+function parseTxtServers(text) {
+    const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const newServers = [];
+    
+    // The loop increments by 2 to process pairs of Name and Address
+    for (let i = 0; i < lines.length; i += 2) {
+        const name = lines[i];
+        // Check if the address exists
+        const address = lines[i + 1] ? lines[i + 1] : ''; 
+        
+        if (name && address && address.startsWith('http')) { // Basic validation
+             const isBDIX = !address.includes('non-bdix'); // Assuming a default check or 'non-bdix' in URL if needed
+             
+             newServers.push({
+                id: Date.now() + Math.random(),
+                name: name,
+                address: address,
+                categories: ['others'], // Default category for .txt imports
+                type: address.includes('ftp') || address.includes('bdix') ? 'bdix' : 'non-bdix', // Simple type guess
+                status: 'inactive',
+                description: '',
+                rank: servers.length + newServers.length + 1,
+                createdAt: Date.now(),
+                isFavorite: false,
+             });
+        }
+    }
+    
+    return newServers;
+}
+
 // ----------------------------------------------------------------------
-// MODIFIED FUNCTION: Correctly fetches and processes an array of servers from URL
+// MODIFIED FUNCTION: Now supports JSON and TXT formats
 // ----------------------------------------------------------------------
 
 // Import from URL function
@@ -364,42 +395,60 @@ async function importFromURL() {
         const response = await fetch(url);
         
         if (!response.ok) {
-            // Throw an error for non-200 responses
             throw new Error(`Failed to fetch URL: HTTP ${response.status}`);
         }
         
-        let importedServers = await response.json();
+        let importedServers = [];
+        const fileExtension = url.split('.').pop().toLowerCase();
         
-        // 2. Validate that the imported data is a JSON array (a proper backup)
-        if (!Array.isArray(importedServers)) {
-            throw new Error('Imported data is not a valid server list (expected a JSON array).');
+        if (fileExtension === 'json') {
+            // JSON (Full Backup) Parsing
+            importedServers = await response.json();
+            if (!Array.isArray(importedServers)) {
+                throw new Error('JSON file is not a valid server list (expected a JSON array).');
+            }
+        } else if (fileExtension === 'txt') {
+            // TXT (Name/Address List) Parsing
+            const textContent = await response.text();
+            importedServers = parseTxtServers(textContent);
+            if (importedServers.length === 0) {
+                 throw new Error('TXT file could not be parsed. Check format: Name\\nAddress\\n\\n...');
+            }
+        } else {
+             throw new Error('Unsupported file extension. Only .json or .txt are supported.');
         }
 
-        // 3. Prepare imported servers (Assign new unique IDs to avoid clashes)
+        
+        // 2. Prepare imported servers (Assign new unique IDs to avoid clashes)
         importedServers = importedServers.map(server => ({
-            ...server,
-            id: Date.now() + Math.random(), // Assign a fresh, unique ID
+            // Ensure necessary fields are present and safe
+            id: Date.now() + Math.random(), 
+            name: server.name || 'Untitled Server',
+            address: server.address || '',
             description: server.description || '',
-            categories: server.categories || ['others']
+            categories: Array.isArray(server.categories) ? server.categories : ['others'],
+            type: server.type || 'non-bdix',
+            status: server.status || 'inactive',
+            rank: servers.length + Math.random(),
+            createdAt: server.createdAt || Date.now(),
+            isFavorite: server.isFavorite || false
         }));
         
-        // 4. Apply Replace or Merge logic
+        // 3. Apply Replace or Merge logic
         if (method === 'replace') {
             servers = importedServers;
             showToast(`All servers replaced from URL! Loaded ${servers.length} entries.`);
         } else {
             // Merge logic (avoid duplicates by address)
             const serverMap = new Map();
-            // Add existing servers
             servers.forEach(server => serverMap.set(server.address, server));
-            // Add/overwrite with imported servers
             importedServers.forEach(server => serverMap.set(server.address, server)); 
             
             servers = Array.from(serverMap.values());
             showToast(`Servers merged from URL! Total servers: ${servers.length}.`);
         }
         
-        // 5. Finalize
+        // 4. Finalize
         saveServers();
         renderServers(currentCategory, currentSort);
         document.getElementById('importUrlModal').style.display = 'none';
