@@ -216,25 +216,59 @@ function closeEditModal() {
     currentEditServerId = null;
 }
 
+// ----------------------------------------------------------------------
+// NEW HELPER FUNCTION FOR DUPLICATE CHECKING
+// Checks if the given address is already in use by a server that shares
+// at least one category with the provided list.
+// ----------------------------------------------------------------------
+function isAddressDuplicateInAnyCategory(address, categories, currentId = null) {
+    const trimmedAddress = address.trim();
+    if (!trimmedAddress) return false;
+
+    return servers.some(existingServer => {
+        // 1. Ignore the server being edited
+        if (currentId && existingServer.id === currentId) {
+            return false;
+        }
+        
+        // 2. Address must match
+        if (existingServer.address.trim() !== trimmedAddress) {
+            return false;
+        }
+
+        // 3. Must have at least one common category
+        // Find if any category of the existing server is included in the new/edited server's categories
+        return existingServer.categories.some(cat => categories.includes(cat));
+    });
+}
+
 // Enhanced Save edit changes
 function saveEditChanges() {
     if (currentEditServerId) {
         const server = servers.find(s => s.id === currentEditServerId);
         if (server) {
-            // Get all updated values
-            server.name = document.getElementById('editServerName').value;
-            server.address = document.getElementById('editServerAddress').value;
-            server.status = document.getElementById('editStatus').value;
-            server.type = document.getElementById('editType').value;
-            // Ensure description is an empty string if nothing is entered
-            server.description = document.getElementById('editDescription').value.trim() || ''; 
-            
-            // Get selected categories
+            // Get selected categories first for duplicate check
             const selectedCategories = [];
             document.querySelectorAll('#editModalBody input[name="editCategories"]:checked').forEach(checkbox => {
                 selectedCategories.push(checkbox.value);
             });
-            server.categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
+            const newCategories = selectedCategories.length > 0 ? selectedCategories : ['others'];
+
+            const newAddress = document.getElementById('editServerAddress').value;
+
+            // DUPLICATE CHECK
+            if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
+                showToast('Error: Duplicate server address found in a matching category!', 'error');
+                return;
+            }
+
+            // If not duplicate, save changes
+            server.name = document.getElementById('editServerName').value;
+            server.address = newAddress;
+            server.status = document.getElementById('editStatus').value;
+            server.type = document.getElementById('editType').value;
+            server.description = document.getElementById('editDescription').value.trim() || ''; 
+            server.categories = newCategories;
             
             saveServers();
             renderServers(currentCategory, currentSort);
@@ -307,7 +341,6 @@ function setupEventListeners() {
         document.getElementById('importUrlModal').style.display = 'none';
     });
     
-    // Link the confirm button to the new importFromURL function
     document.getElementById('confirmImportUrl').addEventListener('click', importFromURL);
     
     document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -339,23 +372,16 @@ function setupEventListeners() {
 
 /**
  * Parses the raw text content of a .txt file into an array of server objects.
- * Format expected: Server Name\nServer Address\n\nServer Name 2\nServer Address 2\n
- * @param {string} text The raw content of the .txt file.
- * @returns {Array<Object>} An array of new server objects.
  */
 function parseTxtServers(text) {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     const newServers = [];
     
-    // The loop increments by 2 to process pairs of Name and Address
     for (let i = 0; i < lines.length; i += 2) {
         const name = lines[i];
-        // Check if the address exists
-        const address = lines[i + 1] ? lines[i + 1] : ''; 
+        const address = lines[i + 1] ? lines[i + 1].trim() : ''; 
         
-        if (name && address && address.startsWith('http')) { // Basic validation
-             const isBDIX = !address.includes('non-bdix'); // Assuming a default check or 'non-bdix' in URL if needed
-             
+        if (name && address && (address.startsWith('http') || address.startsWith('ftp'))) {
              newServers.push({
                 id: Date.now() + Math.random(),
                 name: name,
@@ -374,10 +400,6 @@ function parseTxtServers(text) {
     return newServers;
 }
 
-// ----------------------------------------------------------------------
-// MODIFIED FUNCTION: Now supports JSON and TXT formats
-// ----------------------------------------------------------------------
-
 // Import from URL function
 async function importFromURL() {
     const url = document.getElementById('importUrl').value;
@@ -391,7 +413,6 @@ async function importFromURL() {
     showToast('Downloading server list...');
 
     try {
-        // 1. Fetch the data from the provided URL
         const response = await fetch(url);
         
         if (!response.ok) {
@@ -402,29 +423,26 @@ async function importFromURL() {
         const fileExtension = url.split('.').pop().toLowerCase();
         
         if (fileExtension === 'json') {
-            // JSON (Full Backup) Parsing
             importedServers = await response.json();
             if (!Array.isArray(importedServers)) {
                 throw new Error('JSON file is not a valid server list (expected a JSON array).');
             }
         } else if (fileExtension === 'txt') {
-            // TXT (Name/Address List) Parsing
             const textContent = await response.text();
             importedServers = parseTxtServers(textContent);
             if (importedServers.length === 0) {
-                 throw new Error('TXT file could not be parsed. Check format: Name\\nAddress\\n\\n...');
+                 showToast('TXT file parsed but found no valid servers. Check format.', 'warning');
             }
         } else {
              throw new Error('Unsupported file extension. Only .json or .txt are supported.');
         }
 
         
-        // 2. Prepare imported servers (Assign new unique IDs to avoid clashes)
+        // Prepare imported servers (Assign new unique IDs and ensure default fields)
         importedServers = importedServers.map(server => ({
-            // Ensure necessary fields are present and safe
             id: Date.now() + Math.random(), 
             name: server.name || 'Untitled Server',
-            address: server.address || '',
+            address: (server.address || '').trim(),
             description: server.description || '',
             categories: Array.isArray(server.categories) ? server.categories : ['others'],
             type: server.type || 'non-bdix',
@@ -434,37 +452,42 @@ async function importFromURL() {
             isFavorite: server.isFavorite || false
         }));
         
-        // 3. Apply Replace or Merge logic
+        // Filter out any entries that might be empty or invalid after preparation
+        importedServers = importedServers.filter(s => s.address);
+
+
         if (method === 'replace') {
             servers = importedServers;
             showToast(`All servers replaced from URL! Loaded ${servers.length} entries.`);
         } else {
-            // Merge logic (avoid duplicates by address)
-            const serverMap = new Map();
-            servers.forEach(server => serverMap.set(server.address, server));
-            importedServers.forEach(server => serverMap.set(server.address, server)); 
-            
-            servers = Array.from(serverMap.values());
-            showToast(`Servers merged from URL! Total servers: ${servers.length}.`);
+            // MERGE Logic with DUPLICATE CHECKING
+            const finalServers = [...servers];
+            let duplicatesSkipped = 0;
+
+            importedServers.forEach(importedServer => {
+                // Check if adding this importedServer creates a duplicate in the *current* state of servers (which includes finalServers)
+                if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
+                    duplicatesSkipped++;
+                } else {
+                    finalServers.push(importedServer);
+                }
+            });
+
+            servers = finalServers;
+            showToast(`Servers merged from URL! Added ${importedServers.length - duplicatesSkipped} new entries. Total servers: ${servers.length}.`, duplicatesSkipped > 0 ? 'warning' : 'success');
         }
         
-        // 4. Finalize
         saveServers();
         renderServers(currentCategory, currentSort);
         document.getElementById('importUrlModal').style.display = 'none';
         
     } catch (e) {
-        // Handle network or parsing errors
         console.error('Import Failed:', e);
         showToast(`Error importing from URL: ${e.message}`, 'error');
     }
 }
 
-// ----------------------------------------------------------------------
-// REST OF THE ORIGINAL CODE (Unchanged)
-// ----------------------------------------------------------------------
-
-// Show export modal
+// Show export modal (No change)
 function showExportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -481,7 +504,7 @@ function showExportModal() {
     modal.style.display = 'flex';
 }
 
-// Show import modal
+// Show import modal (No change)
 function showImportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -503,12 +526,12 @@ function showImportModal() {
     }, 100);
 }
 
-// Close modal
+// Close modal (No change)
 function closeModal() {
     document.getElementById('exportImportModal').style.display = 'none';
 }
 
-// Copy export data to clipboard
+// Copy export data to clipboard (No change)
 function copyExportData() {
     const exportData = document.getElementById('exportData');
     exportData.select();
@@ -516,7 +539,7 @@ function copyExportData() {
     showToast('Server data copied to clipboard!');
 }
 
-// Download backup file
+// Download backup file (No change)
 function downloadBackup() {
     const dataStr = JSON.stringify(servers, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
@@ -533,7 +556,7 @@ function downloadBackup() {
     showToast('Backup file downloaded successfully!');
 }
 
-// Trigger file upload
+// Trigger file upload (No change)
 function triggerUpload() {
     document.getElementById('fileUpload').click();
 }
@@ -546,26 +569,47 @@ function handleFileUpload(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const importedServers = JSON.parse(e.target.result);
-            if (Array.isArray(importedServers)) {
+            const rawImportedServers = JSON.parse(e.target.result);
+            if (Array.isArray(rawImportedServers)) {
+
+                // Prepare imported servers (Assign new unique IDs and ensure default fields)
+                let importedServers = rawImportedServers.map(server => ({
+                    id: Date.now() + Math.random(), 
+                    name: server.name || 'Untitled Server',
+                    address: (server.address || '').trim(),
+                    description: server.description || '',
+                    categories: Array.isArray(server.categories) ? server.categories : ['others'],
+                    type: server.type || 'non-bdix',
+                    status: server.status || 'inactive',
+                    rank: servers.length + Math.random(),
+                    createdAt: server.createdAt || Date.now(),
+                    isFavorite: server.isFavorite || false
+                }));
+                importedServers = importedServers.filter(s => s.address);
+
+
                 if (confirm('Do you want to replace all current servers with the uploaded backup?')) {
                     servers = importedServers;
                     saveServers();
                     renderServers(currentCategory, currentSort);
                     showToast('Servers restored from backup!');
                 } else {
-                    // Merge instead
-                    const serverMap = new Map();
-                    servers.forEach(server => {
-                        serverMap.set(server.address, server);
+                    // MERGE Logic with DUPLICATE CHECKING
+                    const finalServers = [...servers];
+                    let duplicatesSkipped = 0;
+
+                    importedServers.forEach(importedServer => {
+                        if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
+                            duplicatesSkipped++;
+                        } else {
+                            finalServers.push(importedServer);
+                        }
                     });
-                    importedServers.forEach(server => {
-                        serverMap.set(server.address, {...server, id: Date.now() + Math.random()});
-                    });
-                    servers = Array.from(serverMap.values());
+
+                    servers = finalServers;
                     saveServers();
                     renderServers(currentCategory, currentSort);
-                    showToast('Servers merged with backup!');
+                    showToast(`Servers merged with backup! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
                 }
             } else {
                 showToast('Invalid backup file format!', 'error');
@@ -580,7 +624,7 @@ function handleFileUpload(event) {
     event.target.value = '';
 }
 
-// Replace all servers with imported data
+// Replace all servers with imported data (No change, as replace overwrites everything)
 function replaceServers() {
     const exportData = document.getElementById('exportData');
     try {
@@ -603,26 +647,41 @@ function replaceServers() {
 function mergeServers() {
     const exportData = document.getElementById('exportData');
     try {
-        const importedServers = JSON.parse(exportData.value);
-        if (Array.isArray(importedServers)) {
-            // Create a map to avoid duplicates by address
-            const serverMap = new Map();
+        const rawImportedServers = JSON.parse(exportData.value);
+        if (Array.isArray(rawImportedServers)) {
             
-            // Add existing servers
-            servers.forEach(server => {
-                serverMap.set(server.address, server);
+            // Prepare imported servers (Assign new unique IDs and ensure default fields)
+            let importedServers = rawImportedServers.map(server => ({
+                id: Date.now() + Math.random(), 
+                name: server.name || 'Untitled Server',
+                address: (server.address || '').trim(),
+                description: server.description || '',
+                categories: Array.isArray(server.categories) ? server.categories : ['others'],
+                type: server.type || 'non-bdix',
+                status: server.status || 'inactive',
+                rank: servers.length + Math.random(),
+                createdAt: server.createdAt || Date.now(),
+                isFavorite: server.isFavorite || false
+            }));
+            importedServers = importedServers.filter(s => s.address);
+
+            // MERGE Logic with DUPLICATE CHECKING
+            const finalServers = [...servers];
+            let duplicatesSkipped = 0;
+
+            importedServers.forEach(importedServer => {
+                if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
+                    duplicatesSkipped++;
+                } else {
+                    finalServers.push(importedServer);
+                }
             });
-            
-            // Add imported servers (overwriting duplicates by address)
-            importedServers.forEach(server => {
-                serverMap.set(server.address, {...server, id: Date.now() + Math.random()});
-            });
-            
-            servers = Array.from(serverMap.values());
+
+            servers = finalServers;
             saveServers();
             renderServers(currentCategory, currentSort);
             closeModal();
-            showToast('Servers merged successfully!');
+            showToast(`Servers merged successfully! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
         } else {
             showToast('Invalid server data format!', 'error');
         }
@@ -646,11 +705,17 @@ function addServer() {
     
     // Ensure at least one category is selected, or default to 'others'
     const categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
+
+    // DUPLICATE CHECK
+    if (isAddressDuplicateInAnyCategory(address, categories)) {
+        showToast('Error: Duplicate server address found in a matching category!', 'error');
+        return;
+    }
     
     const newServer = {
         id: Date.now(), // Simple ID generation
         name,
-        address,
+        address: address.trim(),
         categories,
         type,
         status: 'inactive', // Default to inactive
@@ -671,7 +736,7 @@ function addServer() {
     showToast(`Server "${name}" added successfully!`);
 }
 
-// Delete a server
+// Delete a server (No change)
 function deleteServer(id) {
     if (confirm('Are you sure you want to delete this server?')) {
         const serverName = servers.find(server => server.id === id).name;
@@ -689,7 +754,7 @@ function deleteServer(id) {
     }
 }
 
-// Connect to server - ACTUALLY OPENS THE URL
+// Connect to server - ACTUALLY OPENS THE URL (No change)
 function connectToServer(address) {
     showToast(`Opening: ${address}`);
     
@@ -706,7 +771,7 @@ function connectToServer(address) {
     }
 }
 
-// Show toast notification
+// Show toast notification (No change)
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -719,7 +784,7 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Save servers to localStorage
+// Save servers to localStorage (No change)
 function saveServers() {
     localStorage.setItem('ispServers', JSON.stringify(servers));
 }
