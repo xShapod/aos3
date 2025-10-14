@@ -756,3 +756,76 @@ footer {
         justify-content: center;
     }
 }
+
+/* ==================== STATUS CHECKING STYLES ==================== */
+
+.server-status.checking {
+    background: rgba(248, 150, 30, 0.2);
+    color: var(--warning);
+}
+
+.server-status.checking i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.last-checked {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 0.25rem;
+}
+
+.bulk-actions-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bulk-actions-section h4 {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Enhanced server actions for new buttons */
+.server-actions {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.server-actions .btn {
+    white-space: nowrap;
+}
+
+.server-actions .btn:nth-child(1) {
+    grid-column: 1;
+}
+
+.server-actions .btn:nth-child(2) {
+    grid-column: 2;
+}
+
+.server-actions .btn:nth-child(3) {
+    grid-column: 3;
+}
+
+/* Responsive adjustments for new buttons */
+@media (max-width: 768px) {
+    .server-actions {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .server-actions .btn:nth-child(1),
+    .server-actions .btn:nth-child(2),
+    .server-actions .btn:nth-child(3) {
+        grid-column: 1;
+    }
+}
