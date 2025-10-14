@@ -201,6 +201,35 @@ header {
     color: var(--danger);
 }
 
+.server-status.checking {
+    background: rgba(248, 150, 30, 0.2);
+    color: var(--warning);
+}
+
+.server-status.checking i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.server-meta {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.last-checked {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.response-time {
+    color: var(--warning);
+    font-weight: 600;
+}
+
 .server-address {
     font-family: monospace;
     background: rgba(0, 0, 0, 0.3);
@@ -218,9 +247,26 @@ header {
 
 /* Server Actions Styles */
 .server-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
     gap: 0.5rem;
-    margin-top: 0.5rem; /* Add margin to keep buttons separated from description/categories */
+    margin-top: 1rem;
+}
+
+.server-actions .btn {
+    white-space: nowrap;
+}
+
+.server-actions .btn:nth-child(1) {
+    grid-column: 1;
+}
+
+.server-actions .btn:nth-child(2) {
+    grid-column: 2;
+}
+
+.server-actions .btn:nth-child(3) {
+    grid-column: 3;
 }
 
 .btn {
@@ -271,6 +317,25 @@ header {
 
 .btn-info:hover {
     background: rgba(67, 97, 238, 0.3);
+}
+
+.btn-success {
+    background: var(--success);
+    color: var(--dark);
+}
+
+.btn-success:hover {
+    background: #3aa8d0;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.btn-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .add-server-section {
@@ -381,6 +446,17 @@ footer {
     
     .sort-options {
         justify-content: center;
+    }
+    
+    .server-actions {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .server-actions .btn:nth-child(1),
+    .server-actions .btn:nth-child(2),
+    .server-actions .btn:nth-child(3) {
+        grid-column: 1;
     }
 }
 
@@ -604,6 +680,33 @@ footer {
     color: rgba(255, 255, 255, 0.7);
 }
 
+.server-list-meta {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+.server-type {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(76, 201, 240, 0.2);
+    color: var(--success);
+}
+
+.server-type.non-bdix {
+    background: rgba(247, 37, 133, 0.2);
+    color: var(--danger);
+}
+
+.response-time {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    background: rgba(248, 150, 30, 0.2);
+    color: var(--warning);
+}
+
 .server-list-category {
     padding: 0.25rem 0.5rem;
     background: rgba(255, 255, 255, 0.1);
@@ -745,40 +848,63 @@ footer {
     min-height: 80px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .categories-checkboxes {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .server-categories {
-        justify-content: center;
-    }
+/* ==================== DRAG & DROP STYLES ==================== */
+.sortable-ghost {
+    opacity: 0.4;
+    background: rgba(67, 97, 238, 0.2);
 }
 
-/* ==================== STATUS CHECKING STYLES ==================== */
-
-.server-status.checking {
-    background: rgba(248, 150, 30, 0.2);
-    color: var(--warning);
+.sortable-chosen {
+    transform: rotate(2deg);
 }
 
-.server-status.checking i {
-    animation: spin 1s linear infinite;
+.sortable-drag {
+    opacity: 1 !important;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.server-list-item {
+    cursor: grab;
+    transition: all 0.3s ease;
 }
 
-.last-checked {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin-top: 0.25rem;
+.server-list-item:active {
+    cursor: grabbing;
 }
 
+/* ==================== AUTO-REFRESH STYLES ==================== */
+.auto-refresh-bar {
+    background: rgba(76, 201, 240, 0.1);
+    border: 1px solid rgba(76, 201, 240, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.refresh-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.auto-refresh-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.auto-refresh-section h4 {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* ==================== BULK ACTIONS STYLES ==================== */
 .bulk-actions-section {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
@@ -792,40 +918,28 @@ footer {
     gap: 0.5rem;
 }
 
-/* Enhanced server actions for new buttons */
-.server-actions {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 0.5rem;
-    margin-top: 1rem;
+.bulk-actions-section h5 {
+    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    width: 100%;
 }
 
-.server-actions .btn {
-    white-space: nowrap;
-}
-
-.server-actions .btn:nth-child(1) {
-    grid-column: 1;
-}
-
-.server-actions .btn:nth-child(2) {
-    grid-column: 2;
-}
-
-.server-actions .btn:nth-child(3) {
-    grid-column: 3;
-}
-
-/* Responsive adjustments for new buttons */
+/* Responsive adjustments */
 @media (max-width: 768px) {
-    .server-actions {
-        grid-template-columns: 1fr;
+    .categories-checkboxes {
+        flex-direction: column;
         gap: 0.5rem;
     }
     
-    .server-actions .btn:nth-child(1),
-    .server-actions .btn:nth-child(2),
-    .server-actions .btn:nth-child(3) {
-        grid-column: 1;
+    .server-categories {
+        justify-content: center;
+    }
+    
+    .bulk-actions-section .form-row {
+        flex-direction: column;
+    }
+    
+    .auto-refresh-section .form-row {
+        flex-direction: column;
     }
 }
