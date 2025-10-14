@@ -811,22 +811,3 @@ footer a:hover {
         font-size: 0.75rem;
     }
 }
-
-
-
-/* Ensure no horizontal scrolling */
-@media (max-width: 768px) {
-    body {
-        overflow-x: hidden;
-    }
-    
-    .container {
-        max-width: 100%;
-        padding: 0 0.75rem;
-    }
-    
-    header {
-        position: relative;
-        overflow: hidden;
-    }
-}
