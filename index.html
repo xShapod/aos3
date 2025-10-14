@@ -32,7 +32,15 @@
     
     <div class="container">
         <div class="banner">
-            <img src="https://i.ibb.co/Kzqds5vw/1760463550859.png" alt="ISP Media Hub Banner">
+            <img src="https://i.ibb.co/MyNgy0pF/1760299817553.png" alt="ISP Media Hub Banner">
+        </div>
+        
+        <!-- Auto Refresh Status Bar -->
+        <div class="auto-refresh-bar" id="autoRefreshBar" style="display: none;">
+            <div class="refresh-status">
+                <i class="fas fa-sync-alt"></i>
+                <span id="autoRefreshStatus">Auto-refresh: Stopped</span>
+            </div>
         </div>
         
         <div class="sort-options">
@@ -148,6 +156,25 @@
             
             <hr>
             
+            <!-- Auto Refresh Section -->
+            <div class="auto-refresh-section">
+                <h4><i class="fas fa-sync-alt"></i> Auto Refresh</h4>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="autoRefreshInterval">Check Interval (minutes)</label>
+                        <input type="number" class="form-control" id="autoRefreshInterval" min="1" max="60" value="5">
+                    </div>
+                    <button class="btn btn-success" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
+                        <i class="fas fa-play"></i> Start Auto-Refresh
+                    </button>
+                </div>
+                <div class="refresh-status">
+                    Status: <span id="autoRefreshStatus">Stopped</span>
+                </div>
+            </div>
+            
+            <hr>
+            
             <div class="export-import-section">
                 <h4><i class="fas fa-file-export"></i> Backup & Restore</h4>
                 <div class="form-row">
@@ -165,7 +192,7 @@
                 </div>
             </div>
             
-            <!-- BULK ACTIONS SECTION ADDED HERE -->
+            <!-- Bulk Actions Section -->
             <div class="bulk-actions-section">
                 <h4><i class="fas fa-tasks"></i> Bulk Actions</h4>
                 <div class="form-row">
@@ -175,6 +202,26 @@
                     <button class="btn btn-warning" onclick="quickCheckAllStatus()">
                         <i class="fas fa-bolt"></i> Quick Check All
                     </button>
+                </div>
+                <div class="form-row" style="margin-top: 0.5rem;">
+                    <button class="btn btn-success" onclick="bulkFavorite('favorite')">
+                        <i class="fas fa-star"></i> Favorite All
+                    </button>
+                    <button class="btn btn-secondary" onclick="bulkFavorite('unfavorite')">
+                        <i class="fas fa-star"></i> Unfavorite All
+                    </button>
+                </div>
+                <div class="form-row" style="margin-top: 0.5rem;">
+                    <button class="btn btn-danger" onclick="deleteAllServers()">
+                        <i class="fas fa-trash"></i> Delete All Servers
+                    </button>
+                </div>
+                <div class="form-row" style="margin-top: 0.5rem;">
+                    <h5>Export by Category:</h5>
+                    <button class="btn btn-outline" onclick="exportServersByCategory('all')">All</button>
+                    <button class="btn btn-outline" onclick="exportServersByCategory('live')">Live TV</button>
+                    <button class="btn btn-outline" onclick="exportServersByCategory('movies')">Movies</button>
+                    <button class="btn btn-outline" onclick="exportServersByCategory('series')">Series</button>
                 </div>
             </div>
         </div>
