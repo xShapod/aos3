@@ -7,7 +7,7 @@ let servers = [
         categories: ["live"],
         type: "bdix",
         status: "active",
-        description: "",
+        description: "Watch live cricket and football.",
         rank: 1,
         createdAt: new Date('2023-01-15').getTime(),
         isFavorite: false,
@@ -19,7 +19,7 @@ let servers = [
         categories: ["movies"],
         type: "bdix",
         status: "active",
-        description: "",
+        description: "Thousands of movies, regularly updated.",
         rank: 2,
         createdAt: new Date('2023-02-20').getTime(),
         isFavorite: false,
@@ -31,7 +31,7 @@ let servers = [
         categories: ["series"],
         type: "non-bdix",
         status: "inactive",
-        description: "",
+        description: "All popular web series and TV shows.",
         rank: 3,
         createdAt: new Date('2023-03-10').getTime(),
         isFavorite: false,
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
-        // Ensure all servers have a 'categories' array for filtering robustness and an initial status
+        // Ensure all servers have necessary fields for robustness
         servers.forEach(server => {
             if (!server.categories) {
                 server.categories = [server.category || 'others'];
@@ -55,29 +55,31 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!server.status) {
                 server.status = 'inactive';
             }
-            // Add a rank if it's missing (for older saved data compatibility)
             if (server.rank === undefined || server.rank === null) {
                 server.rank = Date.now() + Math.random();
             }
         });
     } else {
         // Save default servers if first time
-        localStorage.setItem('ispServers', JSON.stringify(servers));
+        saveServers();
     }
     
     renderServers(currentCategory, currentSort);
     setupEventListeners();
 });
 
-// --- START OF NEW VERIFY FEATURE IMPLEMENTATION ---
+// --- SERVER VERIFICATION FEATURE ---
 
-// NEW: Helper function to dynamically update a single server card's status
+/**
+ * Helper function to dynamically update a single server card's status in the UI.
+ * @param {number} serverId - The ID of the server.
+ * @param {('active'|'inactive'|'verifying')} newStatus - The new status to display.
+ */
 function updateServerCardStatus(serverId, newStatus) {
     const card = document.querySelector(`.server-card[data-id="${serverId}"]`);
     if (card) {
         const statusDiv = card.querySelector('.server-status');
         
-        // Isolate BDIX badge HTML to re-insert it
         let bdixBadgeHTML = '';
         if (statusDiv) {
              const bdixBadge = statusDiv.querySelector('.bdix-badge');
@@ -90,7 +92,7 @@ function updateServerCardStatus(serverId, newStatus) {
             statusDiv.classList.remove('active', 'inactive', 'verifying');
             statusDiv.classList.add(newStatus);
             
-            const statusText = newStatus === 'active' ? 'Active' : (newStatus === 'inactive' ? 'Inactive' : 'Verifying');
+            const statusText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
             
             // Update the status div content
             statusDiv.innerHTML = `
@@ -111,13 +113,16 @@ function updateServerCardStatus(serverId, newStatus) {
     }
 }
 
-// NEW: Function to check a single server's status (Individual Verify Button Logic)
+/**
+ * Function to check a single server's status (Individual Verify Button Logic).
+ * Uses fetch with 'HEAD' method and 'no-cors' to check accessibility/liveness.
+ * @param {number} serverId - The ID of the server to check.
+ */
 async function checkServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
     
     // 1. Set status to verifying and update UI
-    const originalStatus = server.status;
     server.status = 'verifying';
     updateServerCardStatus(serverId, 'verifying');
     
@@ -129,7 +134,6 @@ async function checkServerStatus(serverId) {
         const timeoutId = setTimeout(() => controller.abort(), 5000); 
 
         // Use no-cors mode to allow checking addresses that don't support CORS headers
-        // This makes the fetch resolve or reject based on network connectivity, which is what we need.
         const response = await fetch(server.address, { 
             method: 'HEAD', 
             mode: 'no-cors', 
@@ -138,14 +142,12 @@ async function checkServerStatus(serverId) {
         
         clearTimeout(timeoutId);
         
-        // If the fetch completes without error or abort, assume success in no-cors mode
-        // Note: For a true status check (outside of no-cors mode), we would check response.ok, 
-        // but no-cors mode always results in a successful response with type 'opaque'.
-        // Therefore, any successful network connection is considered 'Active' here.
+        // In 'no-cors' mode, any successful network connection results in a 'type: opaque' response.
+        // If the fetch completes without error or abort, we assume the server is 'active'.
         newStatus = 'active'; 
 
     } catch (error) {
-        // Network errors, timeouts, or controller aborts
+        // Network errors, timeouts, or controller aborts result in 'inactive'
         newStatus = 'inactive';
     }
 
@@ -161,9 +163,14 @@ async function checkServerStatus(serverId) {
     showToast(toastMessage, toastType);
 }
 
-// --- END OF NEW VERIFY FEATURE IMPLEMENTATION ---
+// --- CORE APPLICATION LOGIC (RESTORED/RETAINED) ---
 
-// Render servers based on category and sort (MODIFIED to include verify button)
+/**
+ * Render servers based on category, search term, and sort order.
+ * (MODIFIED to include the verify button in the card HTML).
+ * @param {string} category - The category filter.
+ * @param {string} sortBy - The sort criteria.
+ */
 function renderServers(category, sortBy) {
     const serverGrid = document.getElementById('serverGrid');
     serverGrid.innerHTML = '';
@@ -303,7 +310,7 @@ function openEditModal(serverId) {
         document.getElementById('editDescription').value = server.description || '';
         
         // Populate categories checkboxes
-        const categoryCheckboxes = document.querySelectorAll('#editModalBody input[name="editCategories"]');
+        const categoryCheckboxes = document.querySelectorAll('#editServerModal input[name="editCategories"]');
         categoryCheckboxes.forEach(checkbox => {
             checkbox.checked = server.categories && server.categories.includes(checkbox.value);
         });
@@ -337,7 +344,6 @@ function isAddressDuplicateInAnyCategory(address, categories, currentId = null) 
     const normalizedNewAddress = normalizeAddress(address);
     if (!normalizedNewAddress) return false;
 
-    // Convert the ID being edited to a string for safe comparison
     const currentIdStr = currentId ? String(currentId) : null;
 
     return servers.some(existingServer => {
@@ -364,7 +370,7 @@ function saveEditChanges() {
         if (server) {
             // Get selected categories first for duplicate check
             const selectedCategories = [];
-            document.querySelectorAll('#editModalBody input[name="editCategories"]:checked').forEach(checkbox => {
+            document.querySelectorAll('#editServerModal input[name="editCategories"]:checked').forEach(checkbox => {
                 selectedCategories.push(checkbox.value);
             });
             const newCategories = selectedCategories.length > 0 ? selectedCategories : ['others'];
@@ -707,7 +713,7 @@ async function importFromUrl() {
     }
 }
 
-// Setup all event listeners (No change needed here, as the verify button is handled with onclick in renderServers)
+// Setup all event listeners
 function setupEventListeners() {
     // Category tabs
     document.querySelectorAll('.tab').forEach(tab => {
