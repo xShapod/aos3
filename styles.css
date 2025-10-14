@@ -696,39 +696,38 @@ footer a:hover {
     }
 }
 
-/* ==================== MOBILE HEADER FIX ==================== */
+/* BEGIN MODIFIED BLOCK FOR MOBILE FIX */
 @media (max-width: 768px) {
     .header-content {
+        /* Was flex-direction: column; This is changed to make it responsive but keep the two main parts separate */
         flex-direction: column;
+        align-items: flex-start; /* Aligns the logo to the left */
         gap: 1rem;
-        align-items: stretch;
-    }
-    
-    .logo {
-        justify-content: center;
-        text-align: center;
     }
     
     .header-actions {
         width: 100%;
-        display: grid;
-        grid-template-columns: 1fr auto auto;
-        gap: 0.5rem;
-        align-items: center;
+        /* Change from justify-content: center; to start for better alignment */
+        justify-content: flex-start;
+        /* Ensure actions remain in one row for the horizontal effect */
+        flex-wrap: nowrap;
+        /* New: Allow items to shrink */
+        min-width: 0; 
     }
     
     .search {
-        grid-column: 1 / -1;
-        order: -1;
-        min-width: 100%;
-        margin-bottom: 0.5rem;
+        /* This overrides the desktop min-width of 300px */
+        min-width: 0;
+        /* Allow search to grow and take up the majority of the remaining space */
+        flex-grow: 1;
+        flex-shrink: 1;
     }
     
-    .header-actions .btn {
-        white-space: nowrap;
-        font-size: 0.8rem;
+    /* NEW: Reduce button padding/font size slightly to help fit on very small screens */
+    .btn {
         padding: 0.5rem 0.75rem;
-        justify-content: center;
+        font-size: 0.75rem;
+        white-space: nowrap; 
     }
     
     .control-bar {
@@ -807,6 +806,7 @@ footer a:hover {
         flex-direction: column;
     }
 }
+/* END MODIFIED BLOCK FOR MOBILE FIX */
 
 @media (max-width: 480px) {
     .container {
@@ -829,42 +829,5 @@ footer a:hover {
     .sort-btn {
         padding: 0.375rem 0.75rem;
         font-size: 0.75rem;
-    }
-    
-    /* Compact buttons for very small screens */
-    .header-actions .btn span {
-        display: none;
-    }
-    
-    .header-actions .btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .header-actions .btn i {
-        margin: 0;
-        font-size: 1rem;
-    }
-}
-
-/* Prevent horizontal scrolling on mobile */
-@media (max-width: 768px) {
-    body {
-        overflow-x: hidden;
-    }
-    
-    .container {
-        max-width: 100%;
-        padding: 0 0.75rem;
-    }
-    
-    header {
-        position: relative;
-        overflow: hidden;
     }
 }
