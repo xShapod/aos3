@@ -696,19 +696,38 @@ footer a:hover {
     }
 }
 
+/* BEGIN MODIFIED BLOCK FOR MOBILE FIX */
 @media (max-width: 768px) {
     .header-content {
+        /* Was flex-direction: column; This is changed to make it responsive but keep the two main parts separate */
         flex-direction: column;
+        align-items: flex-start; /* Aligns the logo to the left */
         gap: 1rem;
     }
     
     .header-actions {
         width: 100%;
-        justify-content: center;
+        /* Change from justify-content: center; to start for better alignment */
+        justify-content: flex-start;
+        /* Ensure actions remain in one row for the horizontal effect */
+        flex-wrap: nowrap;
+        /* New: Allow items to shrink */
+        min-width: 0; 
     }
     
     .search {
-        min-width: 100%;
+        /* This overrides the desktop min-width of 300px */
+        min-width: 0;
+        /* Allow search to grow and take up the majority of the remaining space */
+        flex-grow: 1;
+        flex-shrink: 1;
+    }
+    
+    /* NEW: Reduce button padding/font size slightly to help fit on very small screens */
+    .btn {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+        white-space: nowrap; 
     }
     
     .control-bar {
@@ -787,6 +806,7 @@ footer a:hover {
         flex-direction: column;
     }
 }
+/* END MODIFIED BLOCK FOR MOBILE FIX */
 
 @media (max-width: 480px) {
     .container {
