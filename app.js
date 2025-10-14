@@ -233,6 +233,30 @@ function normalizeAddress(address) {
 }
 
 // ----------------------------------------------------------------------
+// NEW HELPER: Basic Validation Check (Name and Address Protocol)
+// ----------------------------------------------------------------------
+function validateServerInputs(name, address) {
+    if (!name.trim()) {
+        showToast('Server Name is required!', 'error');
+        return false;
+    }
+    if (!address.trim()) {
+        showToast('Server Address is required!', 'error');
+        return false;
+    }
+    // Check for required protocols: http://, https://, or ftp://
+    const normalizedAddress = address.toLowerCase().trim();
+    if (!normalizedAddress.startsWith('http://') && 
+        !normalizedAddress.startsWith('https://') &&
+        !normalizedAddress.startsWith('ftp://')) {
+        showToast('Address must start with http://, https://, or ftp://', 'error');
+        return false;
+    }
+    return true;
+}
+
+
+// ----------------------------------------------------------------------
 // FIX: Uses String() comparison for IDs to ensure edited server is excluded
 // ----------------------------------------------------------------------
 function isAddressDuplicateInAnyCategory(address, categories, currentId = null) {
@@ -266,6 +290,14 @@ function saveEditChanges() {
     if (currentEditServerId) {
         const server = servers.find(s => s.id === currentEditServerId);
         if (server) {
+            const newName = document.getElementById('editServerName').value;
+            const newAddress = document.getElementById('editServerAddress').value;
+
+            // --- NEW: MANDATORY INPUT VALIDATION ---
+            if (!validateServerInputs(newName, newAddress)) {
+                return; 
+            }
+            
             // Get selected categories first for duplicate check
             const selectedCategories = [];
             document.querySelectorAll('#editModalBody input[name="editCategories"]:checked').forEach(checkbox => {
@@ -273,7 +305,6 @@ function saveEditChanges() {
             });
             const newCategories = selectedCategories.length > 0 ? selectedCategories : ['others'];
 
-            const newAddress = document.getElementById('editServerAddress').value;
 
             // --- START CRITICAL FIX: Only perform duplicate check if unique identifiers change ---
             const originalNormalizedAddress = normalizeAddress(server.address);
@@ -303,8 +334,8 @@ function saveEditChanges() {
 
 
             // If not duplicate (or check was skipped), save changes
-            server.name = document.getElementById('editServerName').value;
-            server.address = newAddress;
+            server.name = newName; // Used validated name
+            server.address = newAddress; // Used validated address
             server.status = document.getElementById('editStatus').value;
             server.type = document.getElementById('editType').value;
             server.description = document.getElementById('editDescription').value.trim() || ''; 
@@ -428,7 +459,7 @@ function parseTxtServers(text) {
                 address: address,
                 categories: ['others'], // Default category for .txt imports
                 type: address.includes('ftp') || address.includes('bdix') ? 'bdix' : 'non-bdix', // Simple type guess
-                status: 'inactive',
+                status: 'inactive', // KEPT 'inactive' for Imports as requested
                 description: '',
                 rank: servers.length + newServers.length + 1,
                 createdAt: Date.now(),
@@ -486,7 +517,7 @@ async function importFromURL() {
             description: server.description || '',
             categories: Array.isArray(server.categories) ? server.categories : ['others'],
             type: server.type || 'non-bdix',
-            status: server.status || 'inactive',
+            status: server.status || 'inactive', // KEPT 'inactive' for Imports as requested
             rank: servers.length + Math.random(),
             createdAt: server.createdAt || Date.now(),
             isFavorite: server.isFavorite || false
@@ -620,7 +651,7 @@ function handleFileUpload(event) {
                     description: server.description || '',
                     categories: Array.isArray(server.categories) ? server.categories : ['others'],
                     type: server.type || 'non-bdix',
-                    status: server.status || 'inactive',
+                    status: server.status || 'inactive', // KEPT 'inactive' for Imports as requested
                     rank: servers.length + Math.random(),
                     createdAt: server.createdAt || Date.now(),
                     isFavorite: server.isFavorite || false
@@ -698,7 +729,7 @@ function mergeServers() {
                 description: server.description || '',
                 categories: Array.isArray(server.categories) ? server.categories : ['others'],
                 type: server.type || 'non-bdix',
-                status: server.status || 'inactive',
+                status: server.status || 'inactive', // KEPT 'inactive' for Imports as requested
                 rank: servers.length + Math.random(),
                 createdAt: server.createdAt || Date.now(),
                 isFavorite: server.isFavorite || false
@@ -737,6 +768,11 @@ function addServer() {
     const type = document.getElementById('serverType').value;
     const description = document.getElementById('serverDescription').value;
     
+    // --- NEW: MANDATORY INPUT VALIDATION ---
+    if (!validateServerInputs(name, address)) {
+        return; 
+    }
+
     // Get selected categories
     const selectedCategories = [];
     document.querySelectorAll('#serverForm input[name="serverCategories"]:checked').forEach(checkbox => {
@@ -746,19 +782,28 @@ function addServer() {
     // Ensure at least one category is selected, or default to 'others'
     const categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
 
-    // DUPLICATE CHECK
+    // DUPLICATE CHECK (Address/Category)
     if (isAddressDuplicateInAnyCategory(address, categories)) {
         showToast('Error: Duplicate server address found in a matching category!', 'error');
         return;
     }
     
+    // --- NEW: SERVER NAME WARNING ---
+    const nameIsDuplicate = servers.some(s => s.name.toLowerCase().trim() === name.toLowerCase().trim());
+    if (nameIsDuplicate) {
+        // Allows addition but warns the user
+        if (!confirm(`Warning: A server named "${name.trim()}" already exists. Do you want to continue adding it?`)) {
+            return;
+        }
+    }
+
     const newServer = {
         id: Date.now(), // Simple ID generation
         name,
         address: address.trim(),
         categories,
         type,
-        status: 'inactive', // Default to inactive
+        status: 'active', // NEW: Default to ACTIVE for manually added servers
         description: description.trim() || '', // Ensures description is optional/empty string
         rank: servers.length + 1,
         createdAt: Date.now(),
@@ -816,6 +861,7 @@ function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.style.background = type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--success)');
+    // NEW: Set text color for better contrast on warnings
     toast.style.color = type === 'warning' ? 'var(--dark)' : 'white';
     toast.classList.add('show');
     
