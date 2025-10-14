@@ -6,6 +6,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
+        // Ensure all servers have a 'categories' array for filtering robustness
+        servers.forEach(server => {
+            if (!server.categories) {
+                server.categories = [server.category || 'others'];
+            }
+        });
     }
     
     renderServerList(currentCategory);
@@ -21,7 +27,8 @@ function renderServerList(category) {
     
     if (category !== 'all') {
         // Filter by checking if the server's categories array includes the selected category
-        filteredServers = servers.filter(server => server.categories && server.categories.includes(category));
+        // Ensure server.categories is treated as an array
+        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(category));
     }
     
     // Sort by current rank
@@ -78,47 +85,58 @@ function getCategoryDisplayName(category) {
     return categories[category] || category;
 }
 
-// Move server up in rank
-function moveServerUp(serverId) {
-    const serverIndex = servers.findIndex(s => s.id === serverId);
-    if (serverIndex === -1 || serverIndex === 0) return;
+// Move server up in the current filtered list (manual rank order only)
+function moveServerUp(id) {
+    // We only modify the global 'servers' array, so we need to find the full server object.
+    const currentServer = servers.find(server => server.id === id);
+    if (!currentServer) return;
+
+    // Filter and sort the servers based on the current category and rank order to find the neighbor
+    let filteredServers = servers;
+    if (currentCategory !== 'all') {
+        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
+    }
+    filteredServers.sort((a, b) => a.rank - b.rank);
     
-    // Get the current server and the one above it
-    const currentServer = servers[serverIndex];
-    const aboveServer = servers[serverIndex - 1];
+    const filteredIndex = filteredServers.findIndex(server => server.id === id);
+    if (filteredIndex === 0 || filteredIndex === -1) return; // Cannot move up
     
-    // Swap ranks
+    const aboveServer = filteredServers[filteredIndex - 1];
+
+    // Swap ranks between the two servers in the *global* list
     const tempRank = currentServer.rank;
     currentServer.rank = aboveServer.rank;
     aboveServer.rank = tempRank;
     
-    // Swap positions in the array
-    servers[serverIndex] = aboveServer;
-    servers[serverIndex - 1] = currentServer;
-    
+    // Note: The move is only in rank, not array position. The next render will reflect the change.
     saveServers();
     renderServerList(currentCategory);
     showToast('Server moved up!');
 }
 
-// Move server down in rank
-function moveServerDown(serverId) {
-    const serverIndex = servers.findIndex(s => s.id === serverId);
-    if (serverIndex === -1 || serverIndex === servers.length - 1) return;
+// Move server down in the current filtered list (manual rank order only)
+function moveServerDown(id) {
+    const currentServer = servers.find(server => server.id === id);
+    if (!currentServer) return;
     
-    // Get the current server and the one below it
-    const currentServer = servers[serverIndex];
-    const belowServer = servers[serverIndex + 1];
+    // Filter and sort the servers based on the current category and rank order to find the neighbor
+    let filteredServers = servers;
+    if (currentCategory !== 'all') {
+        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
+    }
+    filteredServers.sort((a, b) => a.rank - b.rank);
     
-    // Swap ranks
+    const filteredIndex = filteredServers.findIndex(server => server.id === id);
+    if (filteredIndex === filteredServers.length - 1 || filteredIndex === -1) return; // Cannot move down
+    
+    const belowServer = filteredServers[filteredIndex + 1];
+
+    // Swap ranks between the two servers in the *global* list
     const tempRank = currentServer.rank;
     currentServer.rank = belowServer.rank;
     belowServer.rank = tempRank;
     
-    // Swap positions in the array
-    servers[serverIndex] = belowServer;
-    servers[serverIndex + 1] = currentServer;
-    
+    // Note: The move is only in rank, not array position. The next render will reflect the change.
     saveServers();
     renderServerList(currentCategory);
     showToast('Server moved down!');
@@ -127,18 +145,27 @@ function moveServerDown(serverId) {
 // Save the new order
 function saveNewOrder() {
     // Reassign ranks based on current order to ensure they're sequential
-    servers.forEach((server, index) => {
+    // This is important after drag/drop or repeated moves to clean up the ranks
+    let currentFilteredServers = servers;
+    if (currentCategory !== 'all') {
+        currentFilteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
+    }
+    currentFilteredServers.sort((a, b) => a.rank - b.rank);
+    
+    // Reassign sequential ranks only to the filtered list
+    currentFilteredServers.forEach((server, index) => {
         server.rank = index + 1;
     });
-    
+
+    // Re-save the entire list to ensure consistency
     saveServers();
     showToast('Server order saved successfully!');
 }
 
 // Reset to default order (by name)
 function resetToDefaultOrder() {
-    if (confirm('Are you sure you want to reset to alphabetical order?')) {
-        // Sort by name alphabetically
+    if (confirm('Are you sure you want to reset the order to alphabetical for all servers?')) {
+        // Sort the entire list by name alphabetically
         servers.sort((a, b) => a.name.localeCompare(b.name));
         
         // Update ranks based on new order
@@ -180,7 +207,10 @@ function setupEventListeners() {
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.style.background = type === 'error' ? 'var(--danger)' : 'var(--success)';
+    // MODIFIED: Check for 'warning' and set background accordingly
+    toast.style.background = type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--success)');
+    // MODIFIED: Set text color for better contrast on warnings
+    toast.style.color = type === 'warning' ? 'var(--dark)' : 'white';
     toast.classList.add('show');
     
     setTimeout(() => {
