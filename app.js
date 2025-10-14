@@ -7,7 +7,7 @@ let servers = [
         categories: ["live"],
         type: "bdix",
         status: "active",
-        description: "Your home for live sports streaming.",
+        description: "",
         rank: 1,
         createdAt: new Date('2023-01-15').getTime(),
         isFavorite: false,
@@ -19,7 +19,7 @@ let servers = [
         categories: ["movies"],
         type: "bdix",
         status: "active",
-        description: "A huge collection of the latest movies.",
+        description: "",
         rank: 2,
         createdAt: new Date('2023-02-20').getTime(),
         isFavorite: false,
@@ -31,7 +31,7 @@ let servers = [
         categories: ["series"],
         type: "non-bdix",
         status: "inactive",
-        description: "Complete seasons of popular TV shows.",
+        description: "",
         rank: 3,
         createdAt: new Date('2023-03-10').getTime(),
         isFavorite: false,
@@ -55,6 +55,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!server.status) {
                 server.status = 'inactive';
             }
+            // Add a rank if it's missing (for older saved data compatibility)
+            if (server.rank === undefined || server.rank === null) {
+                server.rank = Date.now() + Math.random();
+            }
         });
     } else {
         // Save default servers if first time
@@ -65,7 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
-// --- START OF NEW VERIFY FEATURES (Minimal changes to base code) ---
+// --- START OF NEW VERIFY FEATURE IMPLEMENTATION ---
 
 // NEW: Helper function to dynamically update a single server card's status
 function updateServerCardStatus(serverId, newStatus) {
@@ -73,7 +77,7 @@ function updateServerCardStatus(serverId, newStatus) {
     if (card) {
         const statusDiv = card.querySelector('.server-status');
         
-        // Find the BDIX badge element to keep it inside the status div
+        // Isolate BDIX badge HTML to re-insert it
         let bdixBadgeHTML = '';
         if (statusDiv) {
              const bdixBadge = statusDiv.querySelector('.bdix-badge');
@@ -107,7 +111,7 @@ function updateServerCardStatus(serverId, newStatus) {
     }
 }
 
-// NEW: Function to check a single server's status (Request 2 Logic)
+// NEW: Function to check a single server's status (Individual Verify Button Logic)
 async function checkServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
@@ -125,6 +129,7 @@ async function checkServerStatus(serverId) {
         const timeoutId = setTimeout(() => controller.abort(), 5000); 
 
         // Use no-cors mode to allow checking addresses that don't support CORS headers
+        // This makes the fetch resolve or reject based on network connectivity, which is what we need.
         const response = await fetch(server.address, { 
             method: 'HEAD', 
             mode: 'no-cors', 
@@ -134,6 +139,9 @@ async function checkServerStatus(serverId) {
         clearTimeout(timeoutId);
         
         // If the fetch completes without error or abort, assume success in no-cors mode
+        // Note: For a true status check (outside of no-cors mode), we would check response.ok, 
+        // but no-cors mode always results in a successful response with type 'opaque'.
+        // Therefore, any successful network connection is considered 'Active' here.
         newStatus = 'active'; 
 
     } catch (error) {
@@ -142,37 +150,18 @@ async function checkServerStatus(serverId) {
     }
 
     // 2. Update server object and save
+    const toastType = newStatus === 'active' ? 'success' : 'error';
+    const toastMessage = `Server "${server.name}" status: ${newStatus === 'active' ? 'Active' : 'Inactive'}`;
+    
     server.status = newStatus;
     saveServers();
 
     // 3. Update UI
     updateServerCardStatus(serverId, newStatus);
-    showToast(`Server "${server.name}" status: ${newStatus === 'active' ? 'Active' : 'Inactive'}`, newStatus === 'active' ? 'success' : 'error');
+    showToast(toastMessage, toastType);
 }
 
-// NEW: Function to check all servers (Request 1 Logic)
-async function checkAllServers() {
-    const verifyAllBtn = document.getElementById('verifyAllBtn');
-    if (!verifyAllBtn) return;
-    
-    // Disable and show loading state for 'Verify All' button
-    verifyAllBtn.disabled = true;
-    verifyAllBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying All...';
-    
-    showToast('Starting verification for all servers...', 'warning');
-    
-    // Run all checks concurrently
-    const checks = servers.map(server => checkServerStatus(server.id));
-    await Promise.allSettled(checks);
-    
-    // Restore button state
-    verifyAllBtn.disabled = false;
-    verifyAllBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verify All Servers';
-    
-    showToast('All servers verification complete!');
-}
-
-// --- END OF NEW VERIFY FEATURES ---
+// --- END OF NEW VERIFY FEATURE IMPLEMENTATION ---
 
 // Render servers based on category and sort (MODIFIED to include verify button)
 function renderServers(category, sortBy) {
@@ -217,6 +206,8 @@ function renderServers(category, sortBy) {
         serverCard.className = 'server-card';
         serverCard.setAttribute('data-id', server.id);
         
+        const isVerifying = server.status === 'verifying';
+        
         serverCard.innerHTML = `
             <div class="favorite-star ${server.isFavorite ? 'favorited' : ''}" onclick="toggleFavorite(${server.id})">
                 <i class="fas fa-star"></i>
@@ -225,8 +216,8 @@ function renderServers(category, sortBy) {
                 <div>
                     <div class="server-name">${server.name}</div>
                     <div class="server-status ${server.status}">
-                        <i class="fas fa-circle ${server.status === 'verifying' ? 'fa-pulse' : ''}"></i>
-                        ${server.status === 'active' ? 'Active' : (server.status === 'verifying' ? 'Verifying' : 'Inactive')}
+                        <i class="fas fa-circle ${isVerifying ? 'fa-pulse' : ''}"></i>
+                        ${isVerifying ? 'Verifying' : (server.status === 'active' ? 'Active' : 'Inactive')}
                         <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
                     </div>
                 </div>
@@ -239,9 +230,10 @@ function renderServers(category, sortBy) {
                 </div>
             ` : ''}
             <div class="server-actions">
-                <button class="btn btn-warning verify-btn" onclick="checkServerStatus(${server.id})" ${server.status === 'verifying' ? 'disabled' : ''}>
-                    <i class="fas ${server.status === 'verifying' ? 'fa-spinner fa-spin' : 'fa-sync-alt'}"></i> ${server.status === 'verifying' ? 'Verifying' : 'Verify'}
+                <button class="btn btn-warning verify-btn" onclick="checkServerStatus(${server.id})" ${isVerifying ? 'disabled' : ''}>
+                    <i class="fas ${isVerifying ? 'fa-spinner fa-spin' : 'fa-sync-alt'}"></i> ${isVerifying ? 'Verifying' : 'Verify'}
                 </button>
+                
                 <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
                     <i class="fas fa-external-link-alt"></i> Open
                 </button>
@@ -715,7 +707,7 @@ async function importFromUrl() {
     }
 }
 
-// Setup all event listeners (MODIFIED to add verifyAllBtn listener)
+// Setup all event listeners (No change needed here, as the verify button is handled with onclick in renderServers)
 function setupEventListeners() {
     // Category tabs
     document.querySelectorAll('.tab').forEach(tab => {
@@ -737,9 +729,6 @@ function setupEventListeners() {
         });
     });
 
-    // NEW: Verify All Button Listener
-    document.getElementById('verifyAllBtn').addEventListener('click', checkAllServers);
-    
     // Search input listener
     document.getElementById('searchInput').addEventListener('input', () => {
         renderServers(currentCategory, currentSort);
@@ -819,6 +808,11 @@ function setupEventListeners() {
 
     // Handle file upload selection
     document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+    
+    // Settings button listener
+    document.getElementById('settingsBtn').addEventListener('click', function() {
+        window.location.href = 'settings.html';
+    });
 }
 
 // Function to delete a server
