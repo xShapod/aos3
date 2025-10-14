@@ -705,12 +705,24 @@ footer {
 }
 
 /* Checkbox Styles */
+/* In styles.css */
+
 .categories-checkboxes {
+    /* Ensure the checkboxes wrap in a horizontal layout */
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    flex-wrap: wrap; 
+    gap: 1rem; /* Spacing between checkboxes */
     margin-top: 0.5rem;
+    /* Optional: Limit width if needed, but flex-wrap handles most of it */
+    justify-content: flex-start; 
 }
+
+/* Optional: Make the labels themselves take up less padding if they are too big */
+.checkbox-label {
+    padding: 0.25rem 0.5rem; /* Reduce padding on the labels */
+    /* ... other styles ... */
+}
+
 
 .checkbox-label {
     display: flex;
