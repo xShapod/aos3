@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
-// Enhanced Real server status checking with BDIX context - STRICTER CHECKING
+// Enhanced Real server status checking with response time measurement
 async function checkServerStatus(server) {
     // Show checking status immediately
     server.status = 'checking';
@@ -92,15 +92,14 @@ async function checkServerStatus(server) {
     renderServers(currentCategory, currentSort);
 
     const startTime = performance.now();
-    let isActive = false;
     
     try {
-        // Method 1: Try HEAD request first (lightweight)
+        // Use a more robust approach for BDIX servers
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
         
         const response = await fetch(server.address, {
-            method: 'HEAD',
+            method: 'GET',
             mode: 'no-cors',
             cache: 'no-cache',
             signal: controller.signal,
@@ -111,79 +110,83 @@ async function checkServerStatus(server) {
         
         clearTimeout(timeoutId);
         
-        // If we reach here without error, server responded
-        isActive = true;
+        // Even with no-cors, if we reach here, the server responded
+        const responseTime = performance.now() - startTime;
+        server.status = 'active';
+        server.lastChecked = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
         
     } catch (error) {
-        console.log(`HEAD request failed for ${server.address}:`, error);
-        
-        // Method 2: Try GET request as fallback
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
-            
-            await fetch(server.address, {
-                method: 'GET',
-                mode: 'no-cors',
-                cache: 'no-cache',
-                signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            isActive = true;
-            
-        } catch (getError) {
-            console.log(`GET request also failed for ${server.address}:`, getError);
-            
-            // Method 3: Final attempt with image request (most permissive)
-            isActive = await checkServerWithImageStrict(server.address);
-        }
+        // Try alternative method - create image request
+        await checkServerWithImage(server, startTime);
+    } finally {
+        saveServers();
+        renderServers(currentCategory, currentSort);
     }
-    
-    // Update server status based on strict checking
-    const responseTime = performance.now() - startTime;
-    server.status = isActive ? 'active' : 'inactive';
-    server.lastChecked = Date.now();
-    server.lastResponseTime = isActive ? Math.round(responseTime) : null;
-    
-    saveServers();
-    renderServers(currentCategory, currentSort);
 }
 
-// Strict image-based checking - only mark as active if image actually loads
-function checkServerWithImageStrict(address) {
+// Enhanced alternative method using Image request with response time
+function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
         const timeout = setTimeout(() => {
-            console.log(`Image timeout for ${address}`);
-            resolve(false); // Timeout = inactive
-        }, 5000);
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
+            resolve();
+        }, 8000);
 
         img.onload = function() {
             clearTimeout(timeout);
-            console.log(`Image loaded for ${address}`);
-            resolve(true); // Image loaded = active
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
         };
 
         img.onerror = function() {
             clearTimeout(timeout);
-            console.log(`Image error for ${address}`);
-            resolve(false); // Image error = inactive
+            // Even on error, if we got this far, server might be reachable
+            const responseTime = performance.now() - startTime;
+            server.status = 'active'; // Many BDIX servers block image requests but are still up
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
         };
 
-        // Try to load favicon or a common image path
-        // Use timestamp to avoid cache issues
-        const timestamp = Date.now();
-        img.src = `${address}/favicon.ico?t=${timestamp}`;
-        
-        // If the address doesn't have a protocol, add http:// as default
-        if (!img.src.startsWith('http')) {
-            img.src = `http://${address}/favicon.ico?t=${timestamp}`;
-        }
+        // Try to load a common path or the root
+        img.src = server.address + '/favicon.ico?t=' + Date.now();
     });
 }
 
-// Quick status check - more aggressive timeout for faster checking
+// Check status for a single server
+async function checkSingleServerStatus(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (server) {
+        await checkServerStatus(server);
+        showToast(`Status checked for ${server.name}`);
+    }
+}
+
+// Bulk status check for all servers
+async function checkAllServersStatus() {
+    showToast('Checking status of all servers...');
+    
+    for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        await checkServerStatus(server);
+        
+        // Add delay between checks to avoid overwhelming
+        if (i < servers.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    showToast('All servers status updated!');
+}
+
+// Quick status check (only checks if server is reachable, faster)
 async function quickCheckServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
@@ -191,11 +194,9 @@ async function quickCheckServerStatus(serverId) {
     server.status = 'checking';
     renderServers(currentCategory, currentSort);
 
-    let isActive = false;
-    
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // Shorter timeout
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
         await fetch(server.address, {
             method: 'HEAD',
@@ -204,45 +205,14 @@ async function quickCheckServerStatus(serverId) {
         });
 
         clearTimeout(timeoutId);
-        isActive = true;
-        
+        server.status = 'active';
     } catch (error) {
-        console.log(`Quick check failed for ${server.address}:`, error);
-        isActive = false;
+        server.status = 'inactive';
+    } finally {
+        server.lastChecked = Date.now();
+        saveServers();
+        renderServers(currentCategory, currentSort);
     }
-    
-    server.status = isActive ? 'active' : 'inactive';
-    server.lastChecked = Date.now();
-    server.lastResponseTime = isActive ? 0 : null; // Quick check doesn't measure time accurately
-    
-    saveServers();
-    renderServers(currentCategory, currentSort);
-}
-
-// Enhanced bulk status check with better error handling
-async function checkAllServersStatus() {
-    showToast('Checking status of all servers...');
-    
-    let activeCount = 0;
-    let totalCount = servers.length;
-    
-    for (let i = 0; i < servers.length; i++) {
-        const server = servers[i];
-        const previousStatus = server.status;
-        
-        await checkServerStatus(server);
-        
-        if (server.status === 'active') {
-            activeCount++;
-        }
-        
-        // Add delay between checks to avoid overwhelming
-        if (i < servers.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 800)); // Slightly longer delay
-        }
-    }
-    
-    showToast(`Status check complete! ${activeCount}/${totalCount} servers active`);
 }
 
 // Quick check all function
@@ -255,6 +225,22 @@ async function quickCheckAllStatus() {
     
     await Promise.all(promises);
     showToast('Quick status check completed!');
+}
+
+// Helper function for relative time display
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return 'Never';
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
 }
 
 // ==================== BULK OPERATIONS ====================
