@@ -1,5 +1,6 @@
 let servers = [];
 let currentCategory = 'all';
+let sortable = null;
 
 // Load servers from localStorage
 document.addEventListener('DOMContentLoaded', function() {
@@ -16,7 +17,53 @@ document.addEventListener('DOMContentLoaded', function() {
     
     renderServerList(currentCategory);
     setupEventListeners();
+    initializeDragAndDrop();
 });
+
+// Initialize drag and drop functionality
+function initializeDragAndDrop() {
+    const serverList = document.getElementById('serverList');
+    
+    sortable = Sortable.create(serverList, {
+        animation: 150,
+        handle: '.server-list-item',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        onEnd: function(evt) {
+            updateRanksAfterDrag();
+            showToast('Order updated! Don\'t forget to save.', 'warning');
+        }
+    });
+}
+
+// Update ranks after drag and drop
+function updateRanksAfterDrag() {
+    const serverList = document.getElementById('serverList');
+    const items = serverList.querySelectorAll('.server-list-item');
+    
+    items.forEach((item, index) => {
+        const serverId = parseInt(item.getAttribute('data-id'));
+        const server = servers.find(s => s.id === serverId);
+        if (server) {
+            server.rank = index + 1;
+        }
+    });
+    
+    // Update the displayed rank numbers
+    updateRankNumbers();
+}
+
+// Update displayed rank numbers
+function updateRankNumbers() {
+    const items = document.querySelectorAll('.server-list-item');
+    items.forEach((item, index) => {
+        const rankNumber = item.querySelector('.server-rank-number');
+        if (rankNumber) {
+            rankNumber.textContent = index + 1;
+        }
+    });
+}
 
 // Render server list for sorting
 function renderServerList(category) {
@@ -58,6 +105,10 @@ function renderServerList(category) {
             <div class="server-list-info">
                 <div class="server-list-name">${server.name}</div>
                 <div class="server-list-address">${server.address}</div>
+                <div class="server-list-meta">
+                    <span class="server-type ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
+                    ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
+                </div>
             </div>
             <div class="server-list-category">${getCategoryDisplayName(primaryCategory)}</div>
             <div class="rank-controls">
