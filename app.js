@@ -431,46 +431,36 @@ function renderServers(category, sortBy) {
     
     filteredServers.forEach(server => {
         const serverCard = document.createElement('div');
-        serverCard.className = 'server-card';
+        serverCard.className = 'server-card-compact';
         serverCard.setAttribute('data-id', server.id);
         
         serverCard.innerHTML = `
-            <div class="edit-icon" onclick="openEditModal(${server.id})">
-                <i class="fas fa-edit"></i>
-            </div>
             <div class="favorite-star ${server.isFavorite ? 'favorited' : ''}" onclick="toggleFavorite(${server.id})">
                 <i class="fas fa-star"></i>
             </div>
-            <div class="server-header">
-                <div>
-                    <div class="server-name">${server.name}</div>
-                    <div class="server-status ${server.status}">
+            <div class="server-card-header">
+                <div class="server-card-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="server-card-title">
+                    <div class="server-card-name">${server.name}</div>
+                    <div class="server-card-status ${server.status}">
                         <i class="fas fa-circle"></i>
-                        ${server.status === 'active' ? 'Active' : (server.status === 'checking' ? 'Checking...' : 'Inactive')}
-                        <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
-                    </div>
-                    <div class="server-meta">
-                        ${server.lastChecked ? `<span class="last-checked">Checked: ${formatRelativeTime(server.lastChecked)}</span>` : ''}
-                        ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
+                        ${server.status === 'active' ? 'Active' : (server.status === 'checking' ? 'Checking' : 'Inactive')}
                     </div>
                 </div>
             </div>
-            <div class="server-address">${server.address}</div>
-            ${server.description ? `<div class="server-description">${server.description}</div>` : ''}
-            ${server.categories && server.categories.length > 0 ? `
-                <div class="server-categories">
-                    ${server.categories.map(cat => `<span class="server-category">${getCategoryDisplayName(cat)}</span>`).join('')}
-                </div>
-            ` : ''}
-            <div class="server-actions">
+            <div class="server-card-address" title="${server.address}">${server.address}</div>
+            <div class="server-card-meta">
+                <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
+                ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
+            </div>
+            <div class="server-card-actions">
                 <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
-                    <i class="fas fa-external-link-alt"></i> Open
+                    <i class="fas fa-external-link-alt"></i>
                 </button>
                 <button class="btn btn-info" onclick="checkSingleServerStatus(${server.id})">
-                    <i class="fas fa-sync-alt"></i> Check
-                </button>
-                <button class="btn btn-danger" onclick="deleteServer(${server.id})">
-                    <i class="fas fa-trash"></i>
+                    <i class="fas fa-sync-alt"></i>
                 </button>
             </div>
         `;
