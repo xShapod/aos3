@@ -124,7 +124,7 @@
                                     <input type="checkbox" name="serverCategories" value="series"> Series
                                 </label>
                                 <label class="checkbox-label">
-                                    <input type="checkbox" name="serverCategories" value="others" **checked**> Others
+                                    <input type="checkbox" name="serverCategories" value="others" checked> Others
                                 </label>
                             </div>
                         </div>
@@ -161,6 +161,19 @@
                 <div class="form-row" style="margin-top: 0.5rem;">
                     <button class="btn btn-secondary" id="importUrlBtn" style="width: 100%;">
                          <i class="fas fa-link"></i> Import from URL (.json / .txt)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- BULK ACTIONS SECTION ADDED HERE -->
+            <div class="bulk-actions-section">
+                <h4><i class="fas fa-tasks"></i> Bulk Actions</h4>
+                <div class="form-row">
+                    <button class="btn btn-info" onclick="checkAllServersStatus()">
+                        <i class="fas fa-sync-alt"></i> Check All Status
+                    </button>
+                    <button class="btn btn-warning" onclick="quickCheckAllStatus()">
+                        <i class="fas fa-bolt"></i> Quick Check All
                     </button>
                 </div>
             </div>
