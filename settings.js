@@ -5,18 +5,13 @@ let currentCategory = 'all';
 document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
-        try {
-            servers = JSON.parse(savedServers);
-            // Ensure all servers have a 'categories' array for filtering robustness
-            servers.forEach(server => {
-                if (!server.categories) {
-                    server.categories = [server.category || 'others'];
-                }
-            });
-        } catch (e) {
-            console.error("Error parsing stored server data in settings:", e);
-            // If data is corrupt, stop here but don't overwrite if we don't know the state
-        }
+        servers = JSON.parse(savedServers);
+        // Ensure all servers have a 'categories' array for filtering robustness
+        servers.forEach(server => {
+            if (!server.categories) {
+                server.categories = [server.category || 'others'];
+            }
+        });
     }
     
     renderServerList(currentCategory);
@@ -32,6 +27,7 @@ function renderServerList(category) {
     
     if (category !== 'all') {
         // Filter by checking if the server's categories array includes the selected category
+        // Ensure server.categories is treated as an array
         filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(category));
     }
     
@@ -50,137 +46,140 @@ function renderServerList(category) {
     }
     
     filteredServers.forEach((server, index) => {
-        const serverListItem = document.createElement('div');
-        serverListItem.className = 'server-list-item';
-        serverListItem.setAttribute('data-id', server.id);
+        const listItem = document.createElement('div');
+        listItem.className = 'server-list-item';
+        listItem.setAttribute('data-id', server.id);
         
-        serverListItem.innerHTML = `
-            <div class="server-rank-number" data-rank="${server.rank}">${server.rank}</div>
+        // Safely display the first category from the categories array
+        const primaryCategory = server.categories && server.categories.length > 0 ? server.categories[0] : 'others';
+
+        listItem.innerHTML = `
+            <div class="server-rank-number">${index + 1}</div>
             <div class="server-list-info">
                 <div class="server-list-name">${server.name}</div>
                 <div class="server-list-address">${server.address}</div>
-                <div class="server-list-category">${getCategoryDisplayNames(server.categories).join(', ')}</div>
             </div>
+            <div class="server-list-category">${getCategoryDisplayName(primaryCategory)}</div>
             <div class="rank-controls">
-                <button class="rank-btn move-up" onclick="moveServerUp(${server.id}, '${category}')" ${index === 0 ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-up"></i>
+                <button class="rank-btn" onclick="moveServerUp(${server.id})" ${index === 0 ? 'disabled' : ''}>
+                    <i class="fas fa-arrow-up"></i>
                 </button>
-                <button class="rank-btn move-down" onclick="moveServerDown(${server.id}, '${category}')" ${index === filteredServers.length - 1 ? 'disabled' : ''}>
-                    <i class="fas fa-chevron-down"></i>
+                <button class="rank-btn" onclick="moveServerDown(${server.id})" ${index === filteredServers.length - 1 ? 'disabled' : ''}>
+                    <i class="fas fa-arrow-down"></i>
                 </button>
             </div>
         `;
-        serverList.appendChild(serverListItem);
+        
+        serverList.appendChild(listItem);
     });
 }
 
-// Helper to get array of display names
-function getCategoryDisplayNames(categories) {
-    const displayNames = {
+// Get display name for category
+function getCategoryDisplayName(category) {
+    const categories = {
         'live': 'Live TV',
         'movies': 'Movies',
         'series': 'Series',
         'others': 'Others'
     };
-    return categories.map(cat => displayNames[cat] || cat);
+    return categories[category] || category;
 }
 
-// Move server up in the ranked list
-function moveServerUp(id, category) {
-    const serverIndex = servers.findIndex(s => s.id === id);
-    if (serverIndex > 0) {
-        // Find the full list of servers for the current category, sorted by rank
-        let filteredServers = servers;
-        if (category !== 'all') {
-             filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(category));
-        }
-        filteredServers.sort((a, b) => a.rank - b.rank);
+// Move server up in the current filtered list (manual rank order only)
+function moveServerUp(id) {
+    // We only modify the global 'servers' array, so we need to find the full server object.
+    const currentServer = servers.find(server => server.id === id);
+    if (!currentServer) return;
 
-        const currentServerIndexInFiltered = filteredServers.findIndex(s => s.id === id);
-
-        if (currentServerIndexInFiltered > 0) {
-            const currentServer = filteredServers[currentServerInFiltered];
-            const prevServer = filteredServers[currentServerInFiltered - 1];
-
-            // Swap ranks in the main servers array
-            [currentServer.rank, prevServer.rank] = [prevServer.rank, currentServer.rank];
-            
-            // Re-sort the main array by the new ranks
-            servers.sort((a, b) => a.rank - b.rank);
-
-            saveServers();
-            renderServerList(category);
-            showToast(`Moved "${currentServer.name}" up!`);
-        }
+    // Filter and sort the servers based on the current category and rank order to find the neighbor
+    let filteredServers = servers;
+    if (currentCategory !== 'all') {
+        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
     }
+    filteredServers.sort((a, b) => a.rank - b.rank);
+    
+    const filteredIndex = filteredServers.findIndex(server => server.id === id);
+    if (filteredIndex === 0 || filteredIndex === -1) return; // Cannot move up
+    
+    const aboveServer = filteredServers[filteredIndex - 1];
+
+    // Swap ranks between the two servers in the *global* list
+    const tempRank = currentServer.rank;
+    currentServer.rank = aboveServer.rank;
+    aboveServer.rank = tempRank;
+    
+    // Note: The move is only in rank, not array position. The next render will reflect the change.
+    saveServers();
+    renderServerList(currentCategory);
+    showToast('Server moved up!');
 }
 
-// Move server down in the ranked list
-function moveServerDown(id, category) {
-    const serverIndex = servers.findIndex(s => s.id === id);
-    if (serverIndex !== -1) {
-        // Find the full list of servers for the current category, sorted by rank
-        let filteredServers = servers;
-        if (category !== 'all') {
-             filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(category));
-        }
-        filteredServers.sort((a, b) => a.rank - b.rank);
-        
-        const currentServerIndexInFiltered = filteredServers.findIndex(s => s.id === id);
-
-        if (currentServerIndexInFiltered < filteredServers.length - 1) {
-            const currentServer = filteredServers[currentServerIndexInFiltered];
-            const nextServer = filteredServers[currentServerIndexInFiltered + 1];
-
-            // Swap ranks in the main servers array
-            [currentServer.rank, nextServer.rank] = [nextServer.rank, currentServer.rank];
-            
-            // Re-sort the main array by the new ranks
-            servers.sort((a, b) => a.rank - b.rank);
-
-            saveServers();
-            renderServerList(category);
-            showToast(`Moved "${currentServer.name}" down!`);
-        }
+// Move server down in the current filtered list (manual rank order only)
+function moveServerDown(id) {
+    const currentServer = servers.find(server => server.id === id);
+    if (!currentServer) return;
+    
+    // Filter and sort the servers based on the current category and rank order to find the neighbor
+    let filteredServers = servers;
+    if (currentCategory !== 'all') {
+        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
     }
+    filteredServers.sort((a, b) => a.rank - b.rank);
+    
+    const filteredIndex = filteredServers.findIndex(server => server.id === id);
+    if (filteredIndex === filteredServers.length - 1 || filteredIndex === -1) return; // Cannot move down
+    
+    const belowServer = filteredServers[filteredIndex + 1];
+
+    // Swap ranks between the two servers in the *global* list
+    const tempRank = currentServer.rank;
+    currentServer.rank = belowServer.rank;
+    belowServer.rank = tempRank;
+    
+    // Note: The move is only in rank, not array position. The next render will reflect the change.
+    saveServers();
+    renderServerList(currentCategory);
+    showToast('Server moved down!');
 }
 
-// Save New Order (already handled by move functions, but this is a confirmation step)
+// Save the new order
 function saveNewOrder() {
-    // The ranks are already updated in localStorage by moveServerUp/Down.
-    // This function can be used to ensure the final sorted state is written cleanly.
-    
-    // 1. Re-calculate ranks sequentially just in case of any gaps/errors
-    servers.sort((a, b) => a.rank - b.rank);
-    servers.forEach((server, index) => {
-        server.rank = index + 1;
-    });
-
-    saveServers();
-    renderServerList(currentCategory);
-    showToast('Manual order saved successfully!', 'success');
-}
-
-// Reset ranks to default creation order
-function resetToDefaultOrder() {
-    if (!confirm("Are you sure you want to reset the manual order to the order servers were added?")) {
-        return;
+    // Reassign ranks based on current order to ensure they're sequential
+    // This is important after drag/drop or repeated moves to clean up the ranks
+    let currentFilteredServers = servers;
+    if (currentCategory !== 'all') {
+        currentFilteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
     }
+    currentFilteredServers.sort((a, b) => a.rank - b.rank);
     
-    // Sort by createdAt time, which is the default/creation time.
-    servers.sort((a, b) => a.createdAt - b.createdAt);
-    
-    // Apply new sequential ranks
-    servers.forEach((server, index) => {
+    // Reassign sequential ranks only to the filtered list
+    currentFilteredServers.forEach((server, index) => {
         server.rank = index + 1;
     });
-    
+
+    // Re-save the entire list to ensure consistency
     saveServers();
-    renderServerList(currentCategory);
-    showToast('Manual order reset to default (creation order).', 'warning');
+    showToast('Server order saved successfully!');
 }
 
+// Reset to default order (by name)
+function resetToDefaultOrder() {
+    if (confirm('Are you sure you want to reset the order to alphabetical for all servers?')) {
+        // Sort the entire list by name alphabetically
+        servers.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Update ranks based on new order
+        servers.forEach((server, index) => {
+            server.rank = index + 1;
+        });
+        
+        saveServers();
+        renderServerList(currentCategory);
+        showToast('Order reset to alphabetical!');
+    }
+}
 
+// Set up event listeners for settings page
 function setupEventListeners() {
     // Back button
     document.getElementById('backBtn').addEventListener('click', function() {
@@ -204,7 +203,7 @@ function setupEventListeners() {
     document.getElementById('resetOrder').addEventListener('click', resetToDefaultOrder);
 }
 
-// Show toast notification (Copied from app.js for isolated functionality)
+// Show toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -223,4 +222,3 @@ function showToast(message, type = 'success') {
 function saveServers() {
     localStorage.setItem('ispServers', JSON.stringify(servers));
 }
-
