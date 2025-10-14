@@ -318,6 +318,12 @@ function saveEditChanges() {
     }
 }
 
+// Close edit modal
+function closeEditModal() {
+    document.getElementById('editServerModal').style.display = 'none';
+    currentEditServerId = null;
+}
+
 // Set up event listeners
 function setupEventListeners() {
     // Category tabs
@@ -771,6 +777,9 @@ function addServer() {
     
     // Reset form
     document.getElementById('serverForm').reset();
+    
+    // NEW: Close the 'Manage Servers' modal after successfully adding a server
+    document.getElementById('manageServersModal').style.display = 'none';
     
     // Show confirmation toast
     showToast(`Server "${name}" added successfully!`);
