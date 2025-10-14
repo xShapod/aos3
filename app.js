@@ -42,6 +42,45 @@ let currentSort = 'manual';
 let currentCategory = 'all';
 let currentEditServerId = null;
 
+// ==================== AUTO-REFRESH VARIABLES ====================
+let autoRefreshInterval = null;
+let autoRefreshEnabled = false;
+
+// Load servers from localStorage if available
+document.addEventListener('DOMContentLoaded', function() {
+    const savedServers = localStorage.getItem('ispServers');
+    if (savedServers) {
+        servers = JSON.parse(savedServers);
+        // Clean up old fields and initialize new ones
+        servers.forEach(server => {
+            if (!server.categories) {
+                server.categories = [server.category || 'others'];
+            }
+            // Remove lastVerified field and ensure description is a string
+            if (server.lastVerified !== undefined) {
+                delete server.lastVerified;
+            }
+            if (!server.description) {
+                server.description = '';
+            }
+            // Initialize new status checking fields
+            if (!server.lastChecked) {
+                server.lastChecked = null;
+            }
+            if (!server.lastResponseTime) {
+                server.lastResponseTime = null;
+            }
+        });
+    } else {
+        // Save default servers if first time
+        localStorage.setItem('ispServers', JSON.stringify(servers));
+    }
+    
+    renderServers(currentCategory, currentSort);
+    setupEventListeners();
+    initializeAutoRefresh(); // Initialize auto-refresh
+});
+
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
 // Enhanced Real server status checking with BDIX context - STRICTER CHECKING
@@ -216,22 +255,6 @@ async function quickCheckAllStatus() {
     
     await Promise.all(promises);
     showToast('Quick status check completed!');
-}
-
-// Helper function for relative time display
-function formatRelativeTime(timestamp) {
-    if (!timestamp) return 'Never';
-    
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    return 'Just now';
 }
 
 // ==================== BULK OPERATIONS ====================
