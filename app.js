@@ -42,6 +42,10 @@ let currentSort = 'manual';
 let currentCategory = 'all';
 let currentEditServerId = null;
 
+// ==================== AUTO-REFRESH VARIABLES ====================
+let autoRefreshInterval = null;
+let autoRefreshEnabled = false;
+
 // Load servers from localStorage if available
 document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
@@ -74,11 +78,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     renderServers(currentCategory, currentSort);
     setupEventListeners();
+    initializeAutoRefresh(); // Initialize auto-refresh
 });
 
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
-// Real server status checking with BDIX context
+// Enhanced Real server status checking with response time measurement
 async function checkServerStatus(server) {
     // Show checking status immediately
     server.status = 'checking';
@@ -86,53 +91,67 @@ async function checkServerStatus(server) {
     saveServers();
     renderServers(currentCategory, currentSort);
 
+    const startTime = performance.now();
+    
     try {
         // Use a more robust approach for BDIX servers
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
         const response = await fetch(server.address, {
             method: 'GET',
-            mode: 'no-cors', // Important for cross-origin requests
+            mode: 'no-cors',
             cache: 'no-cache',
+            signal: controller.signal,
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             }
         });
         
+        clearTimeout(timeoutId);
+        
         // Even with no-cors, if we reach here, the server responded
+        const responseTime = performance.now() - startTime;
         server.status = 'active';
         server.lastChecked = Date.now();
-        server.lastResponseTime = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
         
     } catch (error) {
         // Try alternative method - create image request
-        await checkServerWithImage(server);
+        await checkServerWithImage(server, startTime);
     } finally {
         saveServers();
         renderServers(currentCategory, currentSort);
     }
 }
 
-// Alternative method using Image request (works for many media servers)
-function checkServerWithImage(server) {
+// Enhanced alternative method using Image request with response time
+function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
         const timeout = setTimeout(() => {
             server.status = 'inactive';
             server.lastChecked = Date.now();
+            server.lastResponseTime = null;
             resolve();
-        }, 5000);
+        }, 8000);
 
         img.onload = function() {
             clearTimeout(timeout);
+            const responseTime = performance.now() - startTime;
             server.status = 'active';
             server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
             resolve();
         };
 
         img.onerror = function() {
             clearTimeout(timeout);
             // Even on error, if we got this far, server might be reachable
+            const responseTime = performance.now() - startTime;
             server.status = 'active'; // Many BDIX servers block image requests but are still up
             server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
             resolve();
         };
 
@@ -224,7 +243,153 @@ function formatRelativeTime(timestamp) {
     return 'Just now';
 }
 
-// ==================== END OF STATUS CHECKING FUNCTIONS ====================
+// ==================== BULK OPERATIONS ====================
+
+// Delete all servers
+function deleteAllServers() {
+    if (confirm('Are you sure you want to delete ALL servers? This cannot be undone!')) {
+        servers = [];
+        saveServers();
+        renderServers(currentCategory, currentSort);
+        showToast('All servers deleted!');
+        closeAllManagementModals();
+    }
+}
+
+// Delete servers by category
+function deleteServersByCategory(category) {
+    const categoryName = getCategoryDisplayName(category);
+    if (confirm(`Are you sure you want to delete all ${categoryName} servers? This cannot be undone!`)) {
+        servers = servers.filter(server => !server.categories.includes(category));
+        
+        // Recalculate ranks
+        servers.forEach((server, index) => {
+            server.rank = index + 1;
+        });
+        
+        saveServers();
+        renderServers(currentCategory, currentSort);
+        showToast(`All ${categoryName} servers deleted!`);
+        closeAllManagementModals();
+    }
+}
+
+// Bulk favorite/unfavorite
+function bulkFavorite(action) {
+    let count = 0;
+    servers.forEach(server => {
+        if (action === 'favorite' && !server.isFavorite) {
+            server.isFavorite = true;
+            count++;
+        } else if (action === 'unfavorite' && server.isFavorite) {
+            server.isFavorite = false;
+            count++;
+        }
+    });
+    
+    saveServers();
+    renderServers(currentCategory, currentSort);
+    showToast(`${count} servers ${action === 'favorite' ? 'added to' : 'removed from'} favorites!`);
+}
+
+// Export servers by category
+function exportServersByCategory(category) {
+    let filteredServers = servers;
+    if (category !== 'all') {
+        filteredServers = servers.filter(server => server.categories.includes(category));
+    }
+    
+    const dataStr = JSON.stringify(filteredServers, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const categoryName = category === 'all' ? 'all' : getCategoryDisplayName(category).toLowerCase().replace(' ', '-');
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `isp-servers-${categoryName}-backup.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`${filteredServers.length} servers exported!`);
+}
+
+// ==================== AUTO-REFRESH STATUS ====================
+
+// Initialize auto-refresh from saved settings
+function initializeAutoRefresh() {
+    const savedAutoRefresh = localStorage.getItem('autoRefreshEnabled');
+    const savedInterval = localStorage.getItem('autoRefreshInterval');
+    
+    if (savedAutoRefresh === 'true') {
+        autoRefreshEnabled = true;
+        const interval = savedInterval ? parseInt(savedInterval) : 5;
+        startAutoRefresh(interval);
+        updateAutoRefreshUI(true, interval);
+    }
+}
+
+// Start auto-refresh
+function startAutoRefresh(intervalMinutes = 5) {
+    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+    
+    autoRefreshInterval = setInterval(() => {
+        showToast(`Auto-refresh: Checking all servers...`, 'info');
+        quickCheckAllStatus();
+    }, intervalMinutes * 60 * 1000);
+    
+    autoRefreshEnabled = true;
+    localStorage.setItem('autoRefreshEnabled', 'true');
+    localStorage.setItem('autoRefreshInterval', intervalMinutes.toString());
+    
+    showToast(`Auto-refresh started (every ${intervalMinutes} minutes)`);
+    updateAutoRefreshUI(true, intervalMinutes);
+}
+
+// Stop auto-refresh
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+    
+    autoRefreshEnabled = false;
+    localStorage.setItem('autoRefreshEnabled', 'false');
+    updateAutoRefreshUI(false, 0);
+    showToast('Auto-refresh stopped');
+}
+
+// Toggle auto-refresh
+function toggleAutoRefresh() {
+    if (autoRefreshEnabled) {
+        stopAutoRefresh();
+    } else {
+        const interval = parseInt(document.getElementById('autoRefreshInterval').value) || 5;
+        startAutoRefresh(interval);
+    }
+}
+
+// Update auto-refresh UI
+function updateAutoRefreshUI(enabled, interval) {
+    const toggleBtn = document.getElementById('autoRefreshToggle');
+    const statusSpan = document.getElementById('autoRefreshStatus');
+    const refreshBar = document.getElementById('autoRefreshBar');
+    
+    if (toggleBtn && statusSpan) {
+        toggleBtn.innerHTML = enabled ? 
+            '<i class="fas fa-stop"></i> Stop Auto-Refresh' : 
+            '<i class="fas fa-play"></i> Start Auto-Refresh';
+        toggleBtn.className = enabled ? 'btn btn-warning' : 'btn btn-success';
+        statusSpan.textContent = enabled ? `Running (every ${interval} minutes)` : 'Stopped';
+    }
+    
+    if (refreshBar) {
+        refreshBar.style.display = enabled ? 'block' : 'none';
+    }
+}
+
+// ==================== MAIN APPLICATION FUNCTIONS ====================
 
 // Render servers based on category and sort
 function renderServers(category, sortBy) {
@@ -284,7 +449,10 @@ function renderServers(category, sortBy) {
                         ${server.status === 'active' ? 'Active' : (server.status === 'checking' ? 'Checking...' : 'Inactive')}
                         <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
                     </div>
-                    ${server.lastChecked ? `<div class="last-checked">Last checked: ${formatRelativeTime(server.lastChecked)}</div>` : ''}
+                    <div class="server-meta">
+                        ${server.lastChecked ? `<span class="last-checked">Checked: ${formatRelativeTime(server.lastChecked)}</span>` : ''}
+                        ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
+                    </div>
                 </div>
             </div>
             <div class="server-address">${server.address}</div>
@@ -477,12 +645,6 @@ function saveEditChanges() {
             showToast('Server updated successfully!');
         }
     }
-}
-
-// Close edit modal
-function closeEditModal() {
-    document.getElementById('editServerModal').style.display = 'none';
-    currentEditServerId = null;
 }
 
 // ----------------------------------------------------------------------
@@ -680,7 +842,6 @@ function mergeServers() {
         showToast('Invalid JSON data!', 'error');
     }
 }
-
 
 // ----------------------------------------------------------------------
 // IMPORT FROM URL ACTION MODIFIED TO CALL closeAllManagementModals()
@@ -922,6 +1083,9 @@ function setupEventListeners() {
     document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
     document.getElementById('saveEdit').addEventListener('click', saveEditChanges);
     
+    // Auto-refresh toggle
+    document.getElementById('autoRefreshToggle').addEventListener('click', toggleAutoRefresh);
+    
     // Close modals when clicking outside
     document.getElementById('exportImportModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
@@ -1034,7 +1198,7 @@ function connectToServer(address) {
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
-    toast.style.background = type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--success)');
+    toast.style.background = type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : (type === 'info' ? 'var(--primary)' : 'var(--success)'));
     toast.style.color = type === 'warning' ? 'var(--dark)' : 'white';
     toast.classList.add('show');
     
