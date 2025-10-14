@@ -112,35 +112,28 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="serverStatus">Initial Status</label>
-                            <select class="form-control" id="serverStatus">
-                                <option value="active">Active</option>
-                                <option value="inactive" selected>Inactive</option>
-                            </select>
+                            <label>Categories (Select multiple)</label>
+                            <div class="categories-checkboxes">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="live"> Live TV
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="movies"> Movies
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="series"> Series
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" name="serverCategories" value="others" **checked**> Others
+                                </label>
+                            </div>
                         </div>
                         <div class="form-group">
-                            <label for="serverType">Connection Type</label>
+                            <label for="serverType">Server Type</label>
                             <select class="form-control" id="serverType">
                                 <option value="bdix">BDIX</option>
-                                <option value="non-bdix" selected>Non-BDIX</option>
+                                <option value="non-bdix">Non-BDIX</option>
                             </select>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Categories (Select multiple)</label>
-                        <div class="categories-checkboxes">
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="serverCategories" value="live"> Live TV
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="serverCategories" value="movies"> Movies
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="serverCategories" value="series"> Series
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="serverCategories" value="others" checked> Others
-                            </label>
                         </div>
                     </div>
                     <div class="form-group">
@@ -148,27 +141,28 @@
                         <textarea class="form-control" id="serverDescription" rows="3"></textarea>
                     </div>
                     <button type="submit" class="btn btn-success" style="width: 100%;">
-                        <i class="fas fa-plus"></i> Add Server
+                        <i class="fas fa-plus-circle"></i> Add Server
                     </button>
                 </form>
             </div>
             
             <hr>
             
-            <div class="management-section">
-                <h4><i class="fas fa-exchange-alt"></i> Import & Export</h4>
-                <div class="export-actions">
-                    <button class="btn btn-primary" onclick="showExportImportModal('export')">
-                        <i class="fas fa-file-export"></i> Export/Backup
+            <div class="export-import-section">
+                <h4><i class="fas fa-file-export"></i> Backup & Restore</h4>
+                <div class="form-row">
+                    <button class="btn btn-info" id="exportBtn">
+                        <i class="fas fa-download"></i> Export/Backup
                     </button>
-                    <button class="btn btn-secondary" onclick="showExportImportModal('import')">
-                        <i class="fas fa-file-import"></i> Import/Restore
+                    <button class="btn btn-warning" id="importBtn">
+                        <i class="fas fa-upload"></i> Import/Restore (Paste Data)
                     </button>
                 </div>
-                <button class="btn btn-info" onclick="openImportUrlModal()">
-                    <i class="fas fa-link"></i> Import from URL
-                </button>
-                <p class="warning-text"><i class="fas fa-exclamation-triangle"></i> Use import/restore cautiously, it can overwrite existing data.</p>
+                <div class="form-row" style="margin-top: 0.5rem;">
+                    <button class="btn btn-secondary" id="importUrlBtn" style="width: 100%;">
+                         <i class="fas fa-link"></i> Import from URL (.json / .txt)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -176,34 +170,54 @@
     <div class="modal" id="exportImportModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 id="eiModalTitle">Export Servers</h3>
-                <button class="close-modal" onclick="closeModal()">&times;</button>
+                <h3 id="modalTitle"></h3>
+                <button class="close-modal" id="closeModal">&times;</button>
             </div>
-            <div class="modal-body">
-                <textarea class="form-control" id="exportData" rows="10" placeholder="Server data (JSON format)"></textarea>
+            <textarea id="exportData" rows="10" readonly></textarea>
+            <div class="modal-actions" id="importActions" style="display: none; justify-content: space-between;">
+                <button class="btn btn-danger" id="replaceData">
+                    <i class="fas fa-sync-alt"></i> Replace All
+                </button>
+                <button class="btn btn-primary" id="mergeData">
+                    <i class="fas fa-code-merge"></i> Merge
+                </button>
             </div>
-            <div class="modal-footer" id="eiModalFooter">
-                </div>
+            <button class="btn btn-primary" id="copyData" style="display: none; margin-top: 1rem;">
+                <i class="fas fa-copy"></i> Copy Data
+            </button>
+            <button class="btn btn-secondary" id="downloadBtn" style="margin-top: 1rem;">
+                <i class="fas fa-file-download"></i> Download as Backup File (.json)
+            </button>
+            <button class="btn btn-secondary" id="uploadBtn" style="margin-top: 0.5rem;">
+                <i class="fas fa-file-upload"></i> Upload Backup File (.json)
+            </button>
         </div>
     </div>
     
     <div class="modal" id="importUrlModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3><i class="fas fa-link"></i> Import Servers from URL</h3>
-                <button class="close-modal" onclick="closeAllManagementModals()">&times;</button>
+                <h3><i class="fas fa-link"></i> Import from URL</h3>
+                <button class="close-modal" id="closeUrlModal">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="importUrl">JSON Server List URL</label>
-                    <input type="text" class="form-control" id="importUrl" placeholder="https://example.com/servers.json" required>
+            <div class="form-group">
+                <label for="importUrl">URL to JSON/TXT file</label>
+                <input type="url" class="form-control" id="importUrl" placeholder="e.g., https://myservers.com/list.json">
+            </div>
+            <div class="form-group">
+                <label>Import Method</label>
+                <div class="categories-checkboxes" style="gap: 2rem;">
+                    <label class="checkbox-label">
+                        <input type="radio" name="importMethod" value="merge" checked> Merge (Add new, skip duplicates)
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="radio" name="importMethod" value="replace"> Replace All
+                    </label>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-success" onclick="importFromUrl()">
-                    <i class="fas fa-download"></i> Fetch & Import
-                </button>
-            </div>
+            <button class="btn btn-primary" id="confirmImportUrl">
+                <i class="fas fa-cloud-download-alt"></i> Import
+            </button>
         </div>
     </div>
     
@@ -211,9 +225,9 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h3><i class="fas fa-edit"></i> Edit Server</h3>
-                <button class="close-modal" onclick="closeEditModal()">&times;</button>
+                <button class="close-modal" id="closeEditModal">&times;</button>
             </div>
-            <div class="modal-body" id="editModalBody">
+            <div id="editModalBody">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editServerName">Server Name</label>
@@ -221,7 +235,7 @@
                     </div>
                     <div class="form-group">
                         <label for="editServerAddress">Server Address</label>
-                        <input type="text" class="form-control" id="editServerAddress" placeholder="http://, https://, or ftp:// address" required>
+                        <input type="text" class="form-control" id="editServerAddress" required>
                     </div>
                 </div>
                 <div class="form-row">
@@ -233,7 +247,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="editType">Connection Type</label>
+                        <label for="editType">Server Type</label>
                         <select class="form-control" id="editType">
                             <option value="bdix">BDIX</option>
                             <option value="non-bdix">Non-BDIX</option>
@@ -261,7 +275,7 @@
                     <label for="editDescription">Description</label>
                     <textarea class="form-control" id="editDescription" rows="3"></textarea>
                 </div>
-                <button class="btn btn-success" id="saveEdit" onclick="saveEditChanges()" style="width: 100%;">
+                <button class="btn btn-success" id="saveEdit" style="width: 100%;">
                     <i class="fas fa-save"></i> Save Changes
                 </button>
             </div>
