@@ -389,9 +389,9 @@ function updateAutoRefreshUI(enabled, interval) {
     }
 }
 
-// ==================== MAIN APPLICATION FUNCTIONS ====================
+// ==================== PROFESSIONAL TABLE RENDER FUNCTION ====================
 
-// Render servers based on category and sort
+// Render servers based on category and sort - PROFESSIONAL DESIGN
 function renderServers(category, sortBy) {
     const serverGrid = document.getElementById('serverGrid');
     serverGrid.innerHTML = '';
@@ -428,43 +428,86 @@ function renderServers(category, sortBy) {
         `;
         return;
     }
+
+    // Create professional table structure
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'server-table-container';
+    
+    tableContainer.innerHTML = `
+        <div class="table-header">
+            <div class="table-row header-row">
+                <div class="col-status">Status</div>
+                <div class="col-name">Server Name</div>
+                <div class="col-address">Address</div>
+                <div class="col-type">Type</div>
+                <div class="col-response">Response</div>
+                <div class="col-actions">Actions</div>
+            </div>
+        </div>
+        <div class="table-body" id="tableBody"></div>
+    `;
+    
+    serverGrid.appendChild(tableContainer);
+    const tableBody = document.getElementById('tableBody');
     
     filteredServers.forEach(server => {
-        const serverCard = document.createElement('div');
-        serverCard.className = 'server-card-compact';
-        serverCard.setAttribute('data-id', server.id);
+        const tableRow = document.createElement('div');
+        tableRow.className = `table-row server-row ${server.isFavorite ? 'favorite' : ''}`;
+        tableRow.setAttribute('data-id', server.id);
         
-        serverCard.innerHTML = `
-            <div class="favorite-star ${server.isFavorite ? 'favorited' : ''}" onclick="toggleFavorite(${server.id})">
-                <i class="fas fa-star"></i>
-            </div>
-            <div class="server-card-header">
-                <div class="server-card-icon">
-                    <i class="fas fa-server"></i>
+        tableRow.innerHTML = `
+            <div class="col-status">
+                <div class="status-indicator ${server.status}">
+                    <i class="fas fa-circle"></i>
+                    <span class="status-text">${server.status === 'active' ? 'Online' : (server.status === 'checking' ? 'Checking' : 'Offline')}</span>
                 </div>
-                <div class="server-card-title">
-                    <div class="server-card-name">${server.name}</div>
-                    <div class="server-card-status ${server.status}">
-                        <i class="fas fa-circle"></i>
-                        ${server.status === 'active' ? 'Active' : (server.status === 'checking' ? 'Checking' : 'Inactive')}
+            </div>
+            <div class="col-name">
+                <div class="server-name-wrapper">
+                    <div class="server-name">${server.name}</div>
+                    ${server.categories && server.categories.length > 0 ? `
+                        <div class="server-categories">
+                            ${server.categories.map(cat => `<span class="category-tag">${getCategoryDisplayName(cat)}</span>`).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+            <div class="col-address">
+                <div class="server-address" title="${server.address}">${server.address}</div>
+            </div>
+            <div class="col-type">
+                <span class="type-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
+            </div>
+            <div class="col-response">
+                ${server.lastResponseTime ? `
+                    <div class="response-time">
+                        <i class="fas fa-bolt"></i>
+                        ${server.lastResponseTime}ms
                     </div>
+                ` : '<div class="response-time na">N/A</div>'}
+                ${server.lastChecked ? `<div class="last-checked">${formatRelativeTime(server.lastChecked)}</div>` : ''}
+            </div>
+            <div class="col-actions">
+                <div class="action-buttons">
+                    <button class="btn-action btn-connect" onclick="connectToServer('${server.address}')" title="Open Server">
+                        <i class="fas fa-external-link-alt"></i>
+                    </button>
+                    <button class="btn-action btn-check" onclick="checkSingleServerStatus(${server.id})" title="Check Status">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                    <button class="btn-action btn-edit" onclick="openEditModal(${server.id})" title="Edit Server">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-action btn-favorite ${server.isFavorite ? 'active' : ''}" onclick="toggleFavorite(${server.id})" title="${server.isFavorite ? 'Remove from favorites' : 'Add to favorites'}">
+                        <i class="fas fa-star"></i>
+                    </button>
+                    <button class="btn-action btn-delete" onclick="deleteServer(${server.id})" title="Delete Server">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
-            </div>
-            <div class="server-card-address" title="${server.address}">${server.address}</div>
-            <div class="server-card-meta">
-                <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
-                ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
-            </div>
-            <div class="server-card-actions">
-                <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
-                    <i class="fas fa-external-link-alt"></i>
-                </button>
-                <button class="btn btn-info" onclick="checkSingleServerStatus(${server.id})">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
             </div>
         `;
-        serverGrid.appendChild(serverCard);
+        tableBody.appendChild(tableRow);
     });
 }
 
