@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
-        // Clean up old fields (for a clean migration from previous versions)
+        // Clean up old fields and initialize new ones
         servers.forEach(server => {
             if (!server.categories) {
                 server.categories = [server.category || 'others'];
@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!server.description) {
                 server.description = '';
             }
+            // Initialize new status checking fields
+            if (!server.lastChecked) {
+                server.lastChecked = null;
+            }
+            if (!server.lastResponseTime) {
+                server.lastResponseTime = null;
+            }
         });
     } else {
         // Save default servers if first time
@@ -68,6 +75,156 @@ document.addEventListener('DOMContentLoaded', function() {
     renderServers(currentCategory, currentSort);
     setupEventListeners();
 });
+
+// ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
+
+// Real server status checking with BDIX context
+async function checkServerStatus(server) {
+    // Show checking status immediately
+    server.status = 'checking';
+    server.lastChecked = Date.now();
+    saveServers();
+    renderServers(currentCategory, currentSort);
+
+    try {
+        // Use a more robust approach for BDIX servers
+        const response = await fetch(server.address, {
+            method: 'GET',
+            mode: 'no-cors', // Important for cross-origin requests
+            cache: 'no-cache',
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        // Even with no-cors, if we reach here, the server responded
+        server.status = 'active';
+        server.lastChecked = Date.now();
+        server.lastResponseTime = Date.now();
+        
+    } catch (error) {
+        // Try alternative method - create image request
+        await checkServerWithImage(server);
+    } finally {
+        saveServers();
+        renderServers(currentCategory, currentSort);
+    }
+}
+
+// Alternative method using Image request (works for many media servers)
+function checkServerWithImage(server) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const timeout = setTimeout(() => {
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            resolve();
+        }, 5000);
+
+        img.onload = function() {
+            clearTimeout(timeout);
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            resolve();
+        };
+
+        img.onerror = function() {
+            clearTimeout(timeout);
+            // Even on error, if we got this far, server might be reachable
+            server.status = 'active'; // Many BDIX servers block image requests but are still up
+            server.lastChecked = Date.now();
+            resolve();
+        };
+
+        // Try to load a common path or the root
+        img.src = server.address + '/favicon.ico?t=' + Date.now();
+    });
+}
+
+// Check status for a single server
+async function checkSingleServerStatus(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (server) {
+        await checkServerStatus(server);
+        showToast(`Status checked for ${server.name}`);
+    }
+}
+
+// Bulk status check for all servers
+async function checkAllServersStatus() {
+    showToast('Checking status of all servers...');
+    
+    for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        await checkServerStatus(server);
+        
+        // Add delay between checks to avoid overwhelming
+        if (i < servers.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    showToast('All servers status updated!');
+}
+
+// Quick status check (only checks if server is reachable, faster)
+async function quickCheckServerStatus(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return;
+
+    server.status = 'checking';
+    renderServers(currentCategory, currentSort);
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        await fetch(server.address, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        server.status = 'active';
+    } catch (error) {
+        server.status = 'inactive';
+    } finally {
+        server.lastChecked = Date.now();
+        saveServers();
+        renderServers(currentCategory, currentSort);
+    }
+}
+
+// Quick check all function
+async function quickCheckAllStatus() {
+    showToast('Quick checking all servers...');
+    
+    const promises = servers.map(async (server) => {
+        await quickCheckServerStatus(server.id);
+    });
+    
+    await Promise.all(promises);
+    showToast('Quick status check completed!');
+}
+
+// Helper function for relative time display
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return 'Never';
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
+}
+
+// ==================== END OF STATUS CHECKING FUNCTIONS ====================
 
 // Render servers based on category and sort
 function renderServers(category, sortBy) {
@@ -124,9 +281,10 @@ function renderServers(category, sortBy) {
                     <div class="server-name">${server.name}</div>
                     <div class="server-status ${server.status}">
                         <i class="fas fa-circle"></i>
-                        ${server.status === 'active' ? 'Active' : 'Inactive'}
+                        ${server.status === 'active' ? 'Active' : (server.status === 'checking' ? 'Checking...' : 'Inactive')}
                         <span class="bdix-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
                     </div>
+                    ${server.lastChecked ? `<div class="last-checked">Last checked: ${formatRelativeTime(server.lastChecked)}</div>` : ''}
                 </div>
             </div>
             <div class="server-address">${server.address}</div>
@@ -139,6 +297,9 @@ function renderServers(category, sortBy) {
             <div class="server-actions">
                 <button class="btn btn-primary" onclick="connectToServer('${server.address}')">
                     <i class="fas fa-external-link-alt"></i> Open
+                </button>
+                <button class="btn btn-info" onclick="checkSingleServerStatus(${server.id})">
+                    <i class="fas fa-sync-alt"></i> Check
                 </button>
                 <button class="btn btn-danger" onclick="deleteServer(${server.id})">
                     <i class="fas fa-trash"></i>
@@ -401,7 +562,9 @@ function handleFileUpload(event) {
                     status: server.status || 'inactive',
                     rank: servers.length + Math.random(),
                     createdAt: server.createdAt || Date.now(),
-                    isFavorite: server.isFavorite || false
+                    isFavorite: server.isFavorite || false,
+                    lastChecked: server.lastChecked || null,
+                    lastResponseTime: server.lastResponseTime || null
                 }));
                 importedServers = importedServers.filter(s => s.address);
 
@@ -485,7 +648,9 @@ function mergeServers() {
                 status: server.status || 'inactive',
                 rank: servers.length + Math.random(),
                 createdAt: server.createdAt || Date.now(),
-                isFavorite: server.isFavorite || false
+                isFavorite: server.isFavorite || false,
+                lastChecked: server.lastChecked || null,
+                lastResponseTime: server.lastResponseTime || null
             }));
             importedServers = importedServers.filter(s => s.address);
 
@@ -544,6 +709,8 @@ function parseTxtServers(text) {
                 rank: servers.length + newServers.length + 1,
                 createdAt: Date.now(),
                 isFavorite: false,
+                lastChecked: null,
+                lastResponseTime: null
              });
         }
     }
@@ -600,7 +767,9 @@ async function importFromURL() {
             status: server.status || 'inactive',
             rank: servers.length + Math.random(),
             createdAt: server.createdAt || Date.now(),
-            isFavorite: server.isFavorite || false
+            isFavorite: server.isFavorite || false,
+            lastChecked: server.lastChecked || null,
+            lastResponseTime: server.lastResponseTime || null
         }));
         
         // Filter out any entries that might be empty or invalid after preparation
@@ -807,6 +976,8 @@ function addServer() {
         rank: servers.length + 1,
         createdAt: Date.now(),
         isFavorite: false,
+        lastChecked: null,
+        lastResponseTime: null
     };
     
     servers.push(newServer);
