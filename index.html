@@ -39,151 +39,141 @@
             <button class="sort-btn active" data-sort="manual">
                 <i class="fas fa-sort"></i> Manual Order
             </button>
-            <button class="sort-btn" data-sort="name">
-                <i class="fas fa-sort-alpha-down"></i> Name
+            <button class="sort-btn" data-sort="newest">
+                <i class="fas fa-clock"></i> Newest First
             </button>
-            <button class="sort-btn" data-sort="date">
-                <i class="fas fa-calendar-alt"></i> Date Added
+            <button class="sort-btn" data-sort="alphabetical">
+                <i class="fas fa-sort-alpha-down"></i> A-Z
             </button>
-            <button class="sort-btn" data-sort="favorite">
-                <i class="fas fa-star"></i> Favorites
+            <button class="sort-btn" id="addServerBtn">
+                <i class="fas fa-plus"></i> Add Server
             </button>
-            <button class="btn btn-dark-light" id="importExportBtn">
-                <i class="fas fa-file-export"></i> Import/Export
+            <button class="sort-btn" id="exportBtn">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+            <button class="sort-btn" id="importBtn">
+                <i class="fas fa-file-import"></i> Import
             </button>
         </div>
-        
-        <div class="category-tabs">
-            <div class="tab active" data-category="all">
-                <i class="fas fa-globe"></i>
-                All Servers
-            </div>
-            <div class="tab" data-category="live">
-                <i class="fas fa-tv"></i>
-                Live TV
-            </div>
-            <div class="tab" data-category="movies">
-                <i class="fas fa-film"></i>
-                Movies
-            </div>
-            <div class="tab" data-category="series">
-                <i class="fas fa-play-circle"></i>
-                Series
-            </div>
-            <div class="tab" data-category="others">
-                <i class="fas fa-folder"></i>
-                Others
-            </div>
-        </div>
-        
-        <div class="server-list" id="serverList">
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="filter-section">
+                    <h3><i class="fas fa-filter"></i> Filters</h3>
+                    <div class="form-group">
+                        <label for="categoryFilter">Category</label>
+                        <select class="form-control" id="categoryFilter">
+                            <option value="all">All Categories</option>
+                            <option value="live">Live TV</option>
+                            <option value="movies">Movies</option>
+                            <option value="series">Series</option>
+                            <option value="others">Others</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="typeFilter">Type</label>
+                        <select class="form-control" id="typeFilter">
+                            <option value="all">All Types</option>
+                            <option value="bdix">BDIX</option>
+                            <option value="non-bdix">Non-BDIX</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="statusFilter">Status</label>
+                        <select class="form-control" id="statusFilter">
+                            <option value="all">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="favoriteFilter"> Only Favorites
+                        </label>
+                    </div>
+                </div>
             </div>
 
-        <div class="empty-state" id="emptyState" style="display: none;">
-            <i class="fas fa-server"></i>
-            <h3>No servers found</h3>
-            <p>Add your first server or adjust your filter/search settings.</p>
-            <button class="btn btn-primary" data-toggle="modal" data-target="#addServerModal">
-                <i class="fas fa-plus"></i> Add New Server
-            </button>
+            <div class="server-list-area" id="serverList">
+                </div>
         </div>
     </div>
 
     <div id="addServerModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-plus-circle"></i> Add New Server</h2>
-                <span class="close-btn">&times;</span>
+            <span class="close-btn" id="closeAddModal">&times;</span>
+            <h2><i class="fas fa-plus-circle"></i> Add New Server</h2>
+            <div class="form-group">
+                <label for="serverName">Server Name</label>
+                <input type="text" class="form-control" id="serverName" required>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="serverName">Server Name</label>
-                    <input type="text" class="form-control" id="serverName" required>
-                </div>
-                <div class="form-group">
-                    <label for="serverAddress">Server Address (URL/IP)</label>
-                    <input type="text" class="form-control" id="serverAddress" required>
-                </div>
-                
-                <div class="form-row-group">
-                    <div class="form-group">
-                        <label for="serverStatus">Status</label>
-                        <select class="form-control" id="serverStatus">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="serverType">Type</label>
-                        <select class="form-control" id="serverType">
-                            <option value="bdix">BDIX</option>
-                            <option value="non-bdix">Non-BDIX</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Categories (Select multiple)</label>
-                    <div class="categories-checkboxes" id="serverCategories">
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="serverCategories" value="live"> Live TV
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="serverCategories" value="movies"> Movies
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="serverCategories" value="series"> Series
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" name="serverCategories" value="others"> Others
-                        </label>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="serverDescription">Description (Optional)</label>
-                    <textarea class="form-control" id="serverDescription" rows="3"></textarea>
-                </div>
-                <button class="btn btn-primary" id="addServerBtn" style="width: 100%;">
-                    <i class="fas fa-plus"></i> Add Server
-                </button>
+            <div class="form-group">
+                <label for="serverAddress">Server Address (URL/FTP)</label>
+                <input type="url" class="form-control" id="serverAddress" required>
             </div>
+            <div class="form-group">
+                <label for="serverType">Connection Type</label>
+                <select class="form-control" id="serverType">
+                    <option value="bdix">BDIX</option>
+                    <option value="non-bdix">Non-BDIX</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Categories (Select multiple)</label>
+                <div class="categories-checkboxes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="addCategories" value="live"> Live TV
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="addCategories" value="movies"> Movies
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="addCategories" value="series"> Series
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="addCategories" value="others"> Others
+                    </label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="serverDescription">Description</label>
+                <textarea class="form-control" id="serverDescription" rows="3"></textarea>
+            </div>
+            <button class="btn btn-primary" id="saveServer" style="width: 100%;">
+                <i class="fas fa-save"></i> Save Server
+            </button>
         </div>
     </div>
 
     <div id="editServerModal" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-edit"></i> Edit Server</h2>
-                <span class="close-btn">&times;</span>
+            <span class="close-btn" id="closeEditModal">&times;</span>
+            <h2><i class="fas fa-edit"></i> Edit Server</h2>
+            <div class="form-group">
+                <label for="editName">Server Name</label>
+                <input type="text" class="form-control" id="editName" required>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="editName">Server Name</label>
-                    <input type="text" class="form-control" id="editName" required>
-                </div>
-                <div class="form-group">
-                    <label for="editAddress">Server Address (URL/IP)</label>
-                    <input type="text" class="form-control" id="editAddress" required>
-                </div>
-
-                <div class="form-row-group">
-                    <div class="form-group">
-                        <label for="editStatus">Status</label>
-                        <select class="form-control" id="editStatus">
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="editType">Type</label>
-                        <select class="form-control" id="editType">
-                            <option value="bdix">BDIX</option>
-                            <option value="non-bdix">Non-BDIX</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Categories (Select multiple)</label>
-                    <div class="categories-checkboxes" id="editServerCategories">
+            <div class="form-group">
+                <label for="editAddress">Server Address (URL/FTP)</label>
+                <input type="url" class="form-control" id="editAddress" required>
+            </div>
+            <div class="form-group">
+                <label for="editType">Connection Type</label>
+                <select class="form-control" id="editType">
+                    <option value="bdix">BDIX</option>
+                    <option value="non-bdix">Non-BDIX</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="editStatus">Status</label>
+                <select class="form-control" id="editStatus">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Categories (Select multiple)</label>
+                    <div class="categories-checkboxes">
                         <label class="checkbox-label">
                             <input type="checkbox" name="editCategories" value="live"> Live TV
                         </label>
