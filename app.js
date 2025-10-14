@@ -324,97 +324,202 @@ function closeEditModal() {
     currentEditServerId = null;
 }
 
-// Set up event listeners
-function setupEventListeners() {
-    // Category tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            currentCategory = this.getAttribute('data-category');
-            renderServers(currentCategory, currentSort);
-        });
-    });
-    
-    // Sort buttons
-    document.querySelectorAll('.sort-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            currentSort = this.getAttribute('data-sort');
-            renderServers(currentCategory, currentSort);
-        });
-    });
-    
-    // Search input
-    document.getElementById('searchInput').addEventListener('input', function() {
-        renderServers(currentCategory, currentSort);
-    });
-    
-    // Add server form
-    document.getElementById('serverForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        addServer();
-    });
-    
-    // Settings button
-    document.getElementById('settingsBtn').addEventListener('click', function() {
-        window.location.href = 'settings.html';
-    });
-
-    // Manage Servers Modal Open/Close
-    document.getElementById('manageServersBtn').addEventListener('click', function() {
-        document.getElementById('manageServersModal').style.display = 'flex';
-    });
-    
-    document.getElementById('closeManageModal').addEventListener('click', function() {
-        document.getElementById('manageServersModal').style.display = 'none';
-    });
-
-    // Export/Import buttons
-    document.getElementById('exportBtn').addEventListener('click', showExportModal);
-    document.getElementById('importBtn').addEventListener('click', showImportModal);
-    document.getElementById('downloadBtn').addEventListener('click', downloadBackup);
-    document.getElementById('uploadBtn').addEventListener('click', triggerUpload);
-    document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
-    
-    // Import from URL button
-    document.getElementById('importUrlBtn').addEventListener('click', function() {
-        document.getElementById('importUrlModal').style.display = 'flex';
-    });
-    
-    document.getElementById('closeUrlModal').addEventListener('click', function() {
-        document.getElementById('importUrlModal').style.display = 'none';
-    });
-    
-    document.getElementById('confirmImportUrl').addEventListener('click', importFromURL);
-    
-    document.getElementById('closeModal').addEventListener('click', closeModal);
-    document.getElementById('copyData').addEventListener('click', copyExportData);
-    document.getElementById('replaceData').addEventListener('click', replaceServers);
-    document.getElementById('mergeData').addEventListener('click', mergeServers);
-    
-    // Edit modal events
-    document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
-    document.getElementById('saveEdit').addEventListener('click', saveEditChanges);
-    
-    // Close modals when clicking outside
-    document.getElementById('exportImportModal').addEventListener('click', function(e) {
-        if (e.target === this) closeModal();
-    });
-    
-    document.getElementById('editServerModal').addEventListener('click', function(e) {
-        if (e.target === this) closeEditModal();
-    });
-
-    document.getElementById('manageServersModal').addEventListener('click', function(e) {
-        if (e.target === this) document.getElementById('manageServersModal').style.display = 'none';
-    });
-    
-    document.getElementById('importUrlModal').addEventListener('click', function(e) {
-        if (e.target === this) document.getElementById('importUrlModal').style.display = 'none';
-    });
+// ----------------------------------------------------------------------
+// NEW HELPER FUNCTION: Close all management-related modals
+// ----------------------------------------------------------------------
+function closeAllManagementModals() {
+    // 1. Close Export/Import Modal
+    document.getElementById('exportImportModal').style.display = 'none';
+    // 2. Close Import from URL Modal
+    document.getElementById('importUrlModal').style.display = 'none';
+    // 3. Close Manage Servers Modal (The parent container modal)
+    document.getElementById('manageServersModal').style.display = 'none';
 }
+
+// Close Export/Import Modal (Manual close only)
+function closeModal() {
+    document.getElementById('exportImportModal').style.display = 'none';
+}
+
+// ----------------------------------------------------------------------
+// EXPORT/IMPORT ACTIONS MODIFIED TO CALL closeAllManagementModals()
+// ----------------------------------------------------------------------
+
+// Copy export data to clipboard
+function copyExportData() {
+    const exportData = document.getElementById('exportData');
+    exportData.select();
+    document.execCommand('copy');
+    showToast('Server data copied to clipboard!');
+    // [MODIFIED] Close all relevant modals after action
+    closeAllManagementModals();
+}
+
+// Download backup file
+function downloadBackup() {
+    const dataStr = JSON.stringify(servers, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'isp-servers-backup.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('Backup file downloaded successfully!');
+    // [MODIFIED] Close all relevant modals after action
+    closeAllManagementModals();
+}
+
+// Trigger file upload (no change, just triggers input click)
+function triggerUpload() {
+    document.getElementById('fileUpload').click();
+}
+
+// Handle file upload
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const rawImportedServers = JSON.parse(e.target.result);
+            if (Array.isArray(rawImportedServers)) {
+
+                // Prepare imported servers (Assign new unique IDs and ensure default fields)
+                let importedServers = rawImportedServers.map(server => ({
+                    id: Date.now() + Math.random(), 
+                    name: server.name || 'Untitled Server',
+                    address: (server.address || '').trim(),
+                    description: server.description || '',
+                    categories: Array.isArray(server.categories) ? server.categories : ['others'],
+                    type: server.type || 'non-bdix',
+                    status: server.status || 'inactive',
+                    rank: servers.length + Math.random(),
+                    createdAt: server.createdAt || Date.now(),
+                    isFavorite: server.isFavorite || false
+                }));
+                importedServers = importedServers.filter(s => s.address);
+
+
+                if (confirm('Do you want to replace all current servers with the uploaded backup?')) {
+                    servers = importedServers;
+                    saveServers();
+                    renderServers(currentCategory, currentSort);
+                    showToast('Servers restored from backup!');
+                    // [MODIFIED] Close all relevant modals after action
+                    closeAllManagementModals(); 
+                } else {
+                    // MERGE Logic with DUPLICATE CHECKING
+                    const finalServers = [...servers];
+                    let duplicatesSkipped = 0;
+
+                    importedServers.forEach(importedServer => {
+                        if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
+                            duplicatesSkipped++;
+                        } else {
+                            finalServers.push(importedServer);
+                        }
+                    });
+
+                    servers = finalServers;
+                    saveServers();
+                    renderServers(currentCategory, currentSort);
+                    showToast(`Servers merged with backup! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
+                    // [MODIFIED] Close all relevant modals after action
+                    closeAllManagementModals();
+                }
+            } else {
+                showToast('Invalid backup file format!', 'error');
+            }
+        } catch (e) {
+            showToast('Error reading backup file!', 'error');
+        }
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
+}
+
+// Replace all servers with imported data
+function replaceServers() {
+    const exportData = document.getElementById('exportData');
+    try {
+        const importedServers = JSON.parse(exportData.value);
+        if (Array.isArray(importedServers)) {
+            servers = importedServers;
+            saveServers();
+            renderServers(currentCategory, currentSort);
+            // OLD: closeModal();
+            // [MODIFIED] Close all relevant modals after action
+            closeAllManagementModals();
+            showToast('All servers replaced successfully!');
+        } else {
+            showToast('Invalid server data format!', 'error');
+        }
+    } catch (e) {
+        showToast('Invalid JSON data!', 'error');
+    }
+}
+
+// Merge imported data with existing servers
+function mergeServers() {
+    const exportData = document.getElementById('exportData');
+    try {
+        const rawImportedServers = JSON.parse(exportData.value);
+        if (Array.isArray(rawImportedServers)) {
+            
+            // Prepare imported servers (Assign new unique IDs and ensure default fields)
+            let importedServers = rawImportedServers.map(server => ({
+                id: Date.now() + Math.random(), 
+                name: server.name || 'Untitled Server',
+                address: (server.address || '').trim(),
+                description: server.description || '',
+                categories: Array.isArray(server.categories) ? server.categories : ['others'],
+                type: server.type || 'non-bdix',
+                status: server.status || 'inactive',
+                rank: servers.length + Math.random(),
+                createdAt: server.createdAt || Date.now(),
+                isFavorite: server.isFavorite || false
+            }));
+            importedServers = importedServers.filter(s => s.address);
+
+            // MERGE Logic with DUPLICATE CHECKING
+            const finalServers = [...servers];
+            let duplicatesSkipped = 0;
+
+            importedServers.forEach(importedServer => {
+                if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
+                    duplicatesSkipped++;
+                } else {
+                    finalServers.push(importedServer);
+                }
+            });
+
+            servers = finalServers;
+            saveServers();
+            renderServers(currentCategory, currentSort);
+            // OLD: closeModal();
+            // [MODIFIED] Close all relevant modals after action
+            closeAllManagementModals();
+            showToast(`Servers merged successfully! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
+        } else {
+            showToast('Invalid server data format!', 'error');
+        }
+    } catch (e) {
+        showToast('Invalid JSON data!', 'error');
+    }
+}
+
+
+// ----------------------------------------------------------------------
+// IMPORT FROM URL ACTION MODIFIED TO CALL closeAllManagementModals()
+// ----------------------------------------------------------------------
 
 /**
  * Parses the raw text content of a .txt file into an array of server objects.
@@ -525,7 +630,9 @@ async function importFromURL() {
         
         saveServers();
         renderServers(currentCategory, currentSort);
-        document.getElementById('importUrlModal').style.display = 'none';
+        // OLD: document.getElementById('importUrlModal').style.display = 'none';
+        // [MODIFIED] Close all relevant modals after action
+        closeAllManagementModals();
         
     } catch (e) {
         console.error('Import Failed:', e);
@@ -533,7 +640,7 @@ async function importFromURL() {
     }
 }
 
-// Show export modal
+// Show export modal (no change)
 function showExportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -550,7 +657,7 @@ function showExportModal() {
     modal.style.display = 'flex';
 }
 
-// Show import modal
+// Show import modal (no change)
 function showImportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -572,170 +679,101 @@ function showImportModal() {
     }, 100);
 }
 
-// Close modal
-function closeModal() {
-    document.getElementById('exportImportModal').style.display = 'none';
-}
-
-// Copy export data to clipboard
-function copyExportData() {
-    const exportData = document.getElementById('exportData');
-    exportData.select();
-    document.execCommand('copy');
-    showToast('Server data copied to clipboard!');
-}
-
-// Download backup file
-function downloadBackup() {
-    const dataStr = JSON.stringify(servers, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'isp-servers-backup.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    showToast('Backup file downloaded successfully!');
-}
-
-// Trigger file upload
-function triggerUpload() {
-    document.getElementById('fileUpload').click();
-}
-
-// Handle file upload
-function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        try {
-            const rawImportedServers = JSON.parse(e.target.result);
-            if (Array.isArray(rawImportedServers)) {
-
-                // Prepare imported servers (Assign new unique IDs and ensure default fields)
-                let importedServers = rawImportedServers.map(server => ({
-                    id: Date.now() + Math.random(), 
-                    name: server.name || 'Untitled Server',
-                    address: (server.address || '').trim(),
-                    description: server.description || '',
-                    categories: Array.isArray(server.categories) ? server.categories : ['others'],
-                    type: server.type || 'non-bdix',
-                    status: server.status || 'inactive',
-                    rank: servers.length + Math.random(),
-                    createdAt: server.createdAt || Date.now(),
-                    isFavorite: server.isFavorite || false
-                }));
-                importedServers = importedServers.filter(s => s.address);
-
-
-                if (confirm('Do you want to replace all current servers with the uploaded backup?')) {
-                    servers = importedServers;
-                    saveServers();
-                    renderServers(currentCategory, currentSort);
-                    showToast('Servers restored from backup!');
-                } else {
-                    // MERGE Logic with DUPLICATE CHECKING
-                    const finalServers = [...servers];
-                    let duplicatesSkipped = 0;
-
-                    importedServers.forEach(importedServer => {
-                        if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
-                            duplicatesSkipped++;
-                        } else {
-                            finalServers.push(importedServer);
-                        }
-                    });
-
-                    servers = finalServers;
-                    saveServers();
-                    renderServers(currentCategory, currentSort);
-                    showToast(`Servers merged with backup! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
-                }
-            } else {
-                showToast('Invalid backup file format!', 'error');
-            }
-        } catch (e) {
-            showToast('Error reading backup file!', 'error');
-        }
-    };
-    reader.readAsText(file);
-    
-    // Reset file input
-    event.target.value = '';
-}
-
-// Replace all servers with imported data
-function replaceServers() {
-    const exportData = document.getElementById('exportData');
-    try {
-        const importedServers = JSON.parse(exportData.value);
-        if (Array.isArray(importedServers)) {
-            servers = importedServers;
-            saveServers();
+// Set up event listeners (no change, only action functions changed)
+function setupEventListeners() {
+    // Category tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentCategory = this.getAttribute('data-category');
             renderServers(currentCategory, currentSort);
-            closeModal();
-            showToast('All servers replaced successfully!');
-        } else {
-            showToast('Invalid server data format!', 'error');
-        }
-    } catch (e) {
-        showToast('Invalid JSON data!', 'error');
-    }
-}
-
-// Merge imported data with existing servers
-function mergeServers() {
-    const exportData = document.getElementById('exportData');
-    try {
-        const rawImportedServers = JSON.parse(exportData.value);
-        if (Array.isArray(rawImportedServers)) {
-            
-            // Prepare imported servers (Assign new unique IDs and ensure default fields)
-            let importedServers = rawImportedServers.map(server => ({
-                id: Date.now() + Math.random(), 
-                name: server.name || 'Untitled Server',
-                address: (server.address || '').trim(),
-                description: server.description || '',
-                categories: Array.isArray(server.categories) ? server.categories : ['others'],
-                type: server.type || 'non-bdix',
-                status: server.status || 'inactive',
-                rank: servers.length + Math.random(),
-                createdAt: server.createdAt || Date.now(),
-                isFavorite: server.isFavorite || false
-            }));
-            importedServers = importedServers.filter(s => s.address);
-
-            // MERGE Logic with DUPLICATE CHECKING
-            const finalServers = [...servers];
-            let duplicatesSkipped = 0;
-
-            importedServers.forEach(importedServer => {
-                if (isAddressDuplicateInAnyCategory(importedServer.address, importedServer.categories)) {
-                    duplicatesSkipped++;
-                } else {
-                    finalServers.push(importedServer);
-                }
-            });
-
-            servers = finalServers;
-            saveServers();
+        });
+    });
+    
+    // Sort buttons
+    document.querySelectorAll('.sort-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentSort = this.getAttribute('data-sort');
             renderServers(currentCategory, currentSort);
-            closeModal();
-            showToast(`Servers merged successfully! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
-        } else {
-            showToast('Invalid server data format!', 'error');
-        }
-    } catch (e) {
-        showToast('Invalid JSON data!', 'error');
-    }
+        });
+    });
+    
+    // Search input
+    document.getElementById('searchInput').addEventListener('input', function() {
+        renderServers(currentCategory, currentSort);
+    });
+    
+    // Add server form
+    document.getElementById('serverForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addServer();
+    });
+    
+    // Settings button
+    document.getElementById('settingsBtn').addEventListener('click', function() {
+        window.location.href = 'settings.html';
+    });
+
+    // Manage Servers Modal Open/Close
+    document.getElementById('manageServersBtn').addEventListener('click', function() {
+        document.getElementById('manageServersModal').style.display = 'flex';
+    });
+    
+    document.getElementById('closeManageModal').addEventListener('click', function() {
+        document.getElementById('manageServersModal').style.display = 'none';
+    });
+
+    // Export/Import buttons
+    document.getElementById('exportBtn').addEventListener('click', showExportModal);
+    document.getElementById('importBtn').addEventListener('click', showImportModal);
+    document.getElementById('downloadBtn').addEventListener('click', downloadBackup);
+    document.getElementById('uploadBtn').addEventListener('click', triggerUpload);
+    document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+    
+    // Import from URL button
+    document.getElementById('importUrlBtn').addEventListener('click', function() {
+        document.getElementById('importUrlModal').style.display = 'flex';
+    });
+    
+    document.getElementById('closeUrlModal').addEventListener('click', function() {
+        document.getElementById('importUrlModal').style.display = 'none';
+    });
+    
+    document.getElementById('confirmImportUrl').addEventListener('click', importFromURL);
+    
+    document.getElementById('closeModal').addEventListener('click', closeModal);
+    document.getElementById('copyData').addEventListener('click', copyExportData);
+    document.getElementById('replaceData').addEventListener('click', replaceServers);
+    document.getElementById('mergeData').addEventListener('click', mergeServers);
+    
+    // Edit modal events
+    document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
+    document.getElementById('saveEdit').addEventListener('click', saveEditChanges);
+    
+    // Close modals when clicking outside
+    document.getElementById('exportImportModal').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+    
+    document.getElementById('editServerModal').addEventListener('click', function(e) {
+        if (e.target === this) closeEditModal();
+    });
+
+    document.getElementById('manageServersModal').addEventListener('click', function(e) {
+        if (e.target === this) document.getElementById('manageServersModal').style.display = 'none';
+    });
+    
+    document.getElementById('importUrlModal').addEventListener('click', function(e) {
+        if (e.target === this) document.getElementById('importUrlModal').style.display = 'none';
+    });
 }
 
+// ----------------------------------------------------------------------
+// ADD SERVER ACTION MODIFIED TO CALL closeAllManagementModals()
+// ----------------------------------------------------------------------
 // Enhanced Add a new server with multiple categories
 function addServer() {
     const name = document.getElementById('serverName').value;
@@ -778,9 +816,10 @@ function addServer() {
     // Reset form
     document.getElementById('serverForm').reset();
     
-    // NEW: Close the 'Manage Servers' modal after successfully adding a server
-    document.getElementById('manageServersModal').style.display = 'none';
-    
+    // OLD: document.getElementById('manageServersModal').style.display = 'none';
+    // [MODIFIED] Close all relevant modals after action
+    closeAllManagementModals();
+
     // Show confirmation toast
     showToast(`Server "${name}" added successfully!`);
 }
