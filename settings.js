@@ -18,6 +18,11 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
+// Save servers to localStorage
+function saveServers() {
+    localStorage.setItem('ispServers', JSON.stringify(servers));
+}
+
 // Render server list for sorting
 function renderServerList(category) {
     const serverList = document.getElementById('serverList');
@@ -51,132 +56,124 @@ function renderServerList(category) {
         listItem.setAttribute('data-id', server.id);
         
         // Safely display the first category from the categories array
-        const primaryCategory = server.categories && server.categories.length > 0 ? server.categories[0] : 'others';
+        const displayCategory = (server.categories && server.categories.length > 0) ? server.categories[0].charAt(0).toUpperCase() + server.categories[0].slice(1) : 'Others';
 
         listItem.innerHTML = `
             <div class="server-rank-number">${index + 1}</div>
             <div class="server-list-info">
                 <div class="server-list-name">${server.name}</div>
-                <div class="server-list-address">${server.address}</div>
+                <div class="server-list-category">${displayCategory}</div>
             </div>
-            <div class="server-list-category">${getCategoryDisplayName(primaryCategory)}</div>
-            <div class="rank-controls">
-                <button class="rank-btn" onclick="moveServerUp(${server.id})" ${index === 0 ? 'disabled' : ''}>
-                    <i class="fas fa-arrow-up"></i>
+            <div class="server-list-actions">
+                <button class="btn btn-sm btn-info move-up" data-id="${server.id}">
+                    <i class="fas fa-chevron-up"></i>
                 </button>
-                <button class="rank-btn" onclick="moveServerDown(${server.id})" ${index === filteredServers.length - 1 ? 'disabled' : ''}>
-                    <i class="fas fa-arrow-down"></i>
+                <button class="btn btn-sm btn-info move-down" data-id="${server.id}">
+                    <i class="fas fa-chevron-down"></i>
                 </button>
             </div>
         `;
         
         serverList.appendChild(listItem);
     });
+    
+    // Add event listeners for move buttons
+    document.querySelectorAll('.move-up').forEach(btn => {
+        btn.addEventListener('click', handleMoveUp);
+    });
+    document.querySelectorAll('.move-down').forEach(btn => {
+        btn.addEventListener('click', handleMoveDown);
+    });
 }
 
-// Get display name for category
-function getCategoryDisplayName(category) {
-    const categories = {
-        'live': 'Live TV',
-        'movies': 'Movies',
-        'series': 'Series',
-        'others': 'Others'
-    };
-    return categories[category] || category;
-}
+// Event handler for moving a server up
+function handleMoveUp(event) {
+    const id = parseInt(event.currentTarget.getAttribute('data-id'));
+    const serverElement = event.currentTarget.closest('.server-list-item');
+    const prevServerElement = serverElement.previousElementSibling;
 
-// Move server up in the current filtered list (manual rank order only)
-function moveServerUp(id) {
-    // We only modify the global 'servers' array, so we need to find the full server object.
-    const currentServer = servers.find(server => server.id === id);
-    if (!currentServer) return;
-
-    // Filter and sort the servers based on the current category and rank order to find the neighbor
-    let filteredServers = servers;
-    if (currentCategory !== 'all') {
-        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
+    if (prevServerElement && prevServerElement.classList.contains('server-list-item')) {
+        // Swap in the DOM
+        serverElement.parentNode.insertBefore(serverElement, prevServerElement);
+        
+        // Update the ranks in the servers array and the displayed numbers
+        updateRanksAndDOM(id, 'up');
     }
-    filteredServers.sort((a, b) => a.rank - b.rank);
-    
-    const filteredIndex = filteredServers.findIndex(server => server.id === id);
-    if (filteredIndex === 0 || filteredIndex === -1) return; // Cannot move up
-    
-    const aboveServer = filteredServers[filteredIndex - 1];
-
-    // Swap ranks between the two servers in the *global* list
-    const tempRank = currentServer.rank;
-    currentServer.rank = aboveServer.rank;
-    aboveServer.rank = tempRank;
-    
-    // Note: The move is only in rank, not array position. The next render will reflect the change.
-    saveServers();
-    renderServerList(currentCategory);
-    showToast('Server moved up!');
 }
 
-// Move server down in the current filtered list (manual rank order only)
-function moveServerDown(id) {
-    const currentServer = servers.find(server => server.id === id);
-    if (!currentServer) return;
-    
-    // Filter and sort the servers based on the current category and rank order to find the neighbor
-    let filteredServers = servers;
-    if (currentCategory !== 'all') {
-        filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
-    }
-    filteredServers.sort((a, b) => a.rank - b.rank);
-    
-    const filteredIndex = filteredServers.findIndex(server => server.id === id);
-    if (filteredIndex === filteredServers.length - 1 || filteredIndex === -1) return; // Cannot move down
-    
-    const belowServer = filteredServers[filteredIndex + 1];
+// Event handler for moving a server down
+function handleMoveDown(event) {
+    const id = parseInt(event.currentTarget.getAttribute('data-id'));
+    const serverElement = event.currentTarget.closest('.server-list-item');
+    const nextServerElement = serverElement.nextElementSibling;
 
-    // Swap ranks between the two servers in the *global* list
-    const tempRank = currentServer.rank;
-    currentServer.rank = belowServer.rank;
-    belowServer.rank = tempRank;
-    
-    // Note: The move is only in rank, not array position. The next render will reflect the change.
-    saveServers();
-    renderServerList(currentCategory);
-    showToast('Server moved down!');
+    if (nextServerElement && nextServerElement.classList.contains('server-list-item')) {
+        // Swap in the DOM
+        serverElement.parentNode.insertBefore(nextServerElement, serverElement);
+        
+        // Update the ranks in the servers array and the displayed numbers
+        updateRanksAndDOM(id, 'down');
+    }
 }
 
-// Save the new order
-function saveNewOrder() {
-    // Reassign ranks based on current order to ensure they're sequential
-    // This is important after drag/drop or repeated moves to clean up the ranks
-    let currentFilteredServers = servers;
-    if (currentCategory !== 'all') {
-        currentFilteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
-    }
-    currentFilteredServers.sort((a, b) => a.rank - b.rank);
+// Helper to update the displayed rank numbers in the DOM and the in-memory array
+function updateRanksAndDOM(movedServerId, direction) {
+    const listItems = Array.from(document.getElementById('serverList').children);
+    const reorderedServerIds = listItems
+        .filter(item => item.classList.contains('server-list-item'))
+        .map(item => parseInt(item.getAttribute('data-id')));
+        
+    const idToServerMap = new Map(servers.map(s => [s.id, s]));
+
+    // Update the rank numbers displayed in the DOM
+    listItems.forEach((item, index) => {
+        item.querySelector('.server-rank-number').textContent = index + 1;
+    });
     
-    // Reassign sequential ranks only to the filtered list
-    currentFilteredServers.forEach((server, index) => {
+    // Update the in-memory 'servers' array to reflect the new order
+    // This logic ensures that only visible servers' ranks are affected,
+    // and hidden servers maintain their relative order.
+    
+    // 1. Separate servers that are visible (in reorderedServerIds) from others
+    const otherServers = servers.filter(s => !new Set(reorderedServerIds).has(s.id));
+    const otherServerIds = otherServers.map(s => s.id);
+
+    // 2. Combine the lists to determine the new global order/rank
+    // (Visible servers in new order, followed by hidden servers in their old relative order)
+    const combinedOrderIds = [...reorderedServerIds, ...otherServerIds];
+
+    // 3. Rebuild the main servers array and update ranks (rank: 1 to N)
+    const newServers = combinedOrderIds.map(id => idToServerMap.get(id)).filter(s => s);
+    newServers.forEach((server, index) => {
         server.rank = index + 1;
     });
 
-    // Re-save the entire list to ensure consistency
-    saveServers();
+    servers = newServers; // Update the global array
+    // NOTE: We do not call saveServers() here, only when the user clicks 'Save Order'.
+}
+
+// Save the new order to localStorage
+function saveNewOrder() {
+    // The ranks in the 'servers' array are already updated by updateRanksAndDOM 
+    // after any up/down button click. We just need to save the final state.
+    saveServers(); // Save to localStorage
     showToast('Server order saved successfully!');
 }
 
-// Reset to default order (by name)
+
+// Reset the order to default (alphabetical by name)
 function resetToDefaultOrder() {
-    if (confirm('Are you sure you want to reset the order to alphabetical for all servers?')) {
-        // Sort the entire list by name alphabetically
-        servers.sort((a, b) => a.name.localeCompare(b.name));
-        
-        // Update ranks based on new order
-        servers.forEach((server, index) => {
-            server.rank = index + 1;
-        });
-        
-        saveServers();
-        renderServerList(currentCategory);
-        showToast('Order reset to alphabetical!');
-    }
+    // Sort the entire array alphabetically (which is the default order)
+    servers.sort((a, b) => a.name.localeCompare(b.name));
+    
+    // Re-rank them from 1 to N
+    servers.forEach((server, index) => {
+        server.rank = index + 1;
+    });
+    
+    saveServers();
+    renderServerList(currentCategory);
+    showToast('Order reset to alphabetical!');
 }
 
 // Set up event listeners for settings page
@@ -216,9 +213,4 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
         toast.classList.remove('show');
     }, 3000);
-}
-
-// Save servers to localStorage
-function saveServers() {
-    localStorage.setItem('ispServers', JSON.stringify(servers));
 }
