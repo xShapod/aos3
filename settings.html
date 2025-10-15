@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - ISP Media Hub</title>
+    <title>Tools - ISP Media Hub</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <!-- Add SortableJS for drag and drop -->
@@ -14,8 +14,8 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <i class="fas fa-cog"></i>
-                    <h1>Settings</h1>
+                    <i class="fas fa-tools"></i>
+                    <h1>Tools</h1>
                 </div>
                 <div class="header-actions">
                     <button class="btn btn-primary" id="backBtn">
@@ -27,6 +27,7 @@
     </header>
     
     <div class="container">
+        <!-- Server Sorting Section -->
         <div class="settings-section">
             <h2><i class="fas fa-sort"></i> Server Sorting</h2>
             <p>Drag and drop servers to reorder them, or use the up/down buttons.</p>
@@ -67,10 +68,84 @@
                 </button>
             </div>
         </div>
+
+        <!-- Bulk Actions Section -->
+        <div class="settings-section">
+            <h2><i class="fas fa-tasks"></i> Bulk Actions</h2>
+            
+            <div class="bulk-actions-grid">
+                <div class="bulk-action-card">
+                    <h4><i class="fas fa-sync-alt"></i> Check All Status</h4>
+                    <p>Check status of all servers (may take some time)</p>
+                    <button class="btn btn-info" onclick="checkAllServersStatus()">
+                        <i class="fas fa-sync-alt"></i> Check All Status
+                    </button>
+                </div>
+                
+                <div class="bulk-action-card">
+                    <h4><i class="fas fa-star"></i> Favorite Operations</h4>
+                    <p>Manage favorites for all servers</p>
+                    <div class="action-buttons">
+                        <button class="btn btn-success" onclick="bulkFavorite('favorite')">
+                            <i class="fas fa-star"></i> Favorite All
+                        </button>
+                        <button class="btn btn-secondary" onclick="bulkFavorite('unfavorite')">
+                            <i class="fas fa-star"></i> Unfavorite All
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="bulk-action-card">
+                    <h4><i class="fas fa-trash"></i> Delete Operations</h4>
+                    <p>Delete servers in bulk</p>
+                    <div class="action-buttons">
+                        <button class="btn btn-danger" onclick="deleteAllServers()">
+                            <i class="fas fa-trash"></i> Delete All Servers
+                        </button>
+                    </div>
+                    <div class="category-delete-buttons">
+                        <button class="btn btn-outline-danger" onclick="deleteServersByCategory('live')">
+                            Delete Live TV
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteServersByCategory('movies')">
+                            Delete Movies
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteServersByCategory('series')">
+                            Delete Series
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="deleteServersByCategory('others')">
+                            Delete Others
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bulk-action-card">
+                    <h4><i class="fas fa-file-export"></i> Export by Category</h4>
+                    <p>Export servers filtered by category</p>
+                    <div class="action-buttons">
+                        <button class="btn btn-outline-info" onclick="exportServersByCategory('all')">
+                            Export All
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportServersByCategory('live')">
+                            Export Live TV
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportServersByCategory('movies')">
+                            Export Movies
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportServersByCategory('series')">
+                            Export Series
+                        </button>
+                        <button class="btn btn-outline-info" onclick="exportServersByCategory('others')">
+                            Export Others
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="toast" id="toast"></div>
 
-    <script src="settings.js"></script>
+    <script src="tools.js"></script>
 </body>
 </html>
