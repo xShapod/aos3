@@ -831,3 +831,286 @@ footer a:hover {
         font-size: 0.75rem;
     }
 }
+
+/* Tools Page Styles */
+.settings-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.settings-section h2 {
+    margin-bottom: 1rem;
+    color: var(--light);
+    font-size: 1.5rem;
+}
+
+.settings-section h2 i {
+    margin-right: 0.5rem;
+    color: var(--primary);
+}
+
+.settings-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* Server List for Sorting */
+.server-list {
+    margin: 1.5rem 0;
+}
+
+.server-list-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    cursor: move;
+}
+
+.server-list-item:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.server-rank-number {
+    width: 40px;
+    height: 40px;
+    background: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.server-list-info {
+    flex: 1;
+}
+
+.server-list-name {
+    font-weight: 600;
+    color: var(--light);
+    margin-bottom: 0.25rem;
+}
+
+.server-list-address {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875rem;
+    color: var(--gray-400);
+    margin-bottom: 0.25rem;
+}
+
+.server-list-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.server-type {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.server-type.bdix {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.server-type.non-bdix {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.server-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.server-status.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.server-status.inactive {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.response-time {
+    font-size: 0.75rem;
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.server-list-category {
+    padding: 0.5rem 1rem;
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary);
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin: 0 1rem;
+}
+
+.rank-controls {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.rank-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rank-btn:hover:not(:disabled) {
+    background: var(--primary);
+    color: white;
+}
+
+.rank-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* SortableJS Styles */
+.sortable-ghost {
+    opacity: 0.4;
+    background: rgba(37, 99, 235, 0.1);
+}
+
+.sortable-chosen {
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.sortable-drag {
+    background: rgba(37, 99, 235, 0.1);
+    border: 2px dashed var(--primary);
+}
+
+/* Bulk Actions Grid */
+.bulk-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.bulk-action-card {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bulk-action-card h4 {
+    color: var(--light);
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.bulk-action-card h4 i {
+    margin-right: 0.5rem;
+    color: var(--primary);
+}
+
+.bulk-action-card p {
+    color: var(--gray-400);
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.bulk-action-card .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.category-delete-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-outline-danger {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+}
+
+.btn-outline-danger:hover {
+    background: var(--danger);
+    color: white;
+}
+
+.btn-outline-info {
+    background: transparent;
+    border: 1px solid var(--info);
+    color: var(--info);
+}
+
+.btn-outline-info:hover {
+    background: var(--info);
+    color: white;
+}
+
+/* Responsive Design for Tools */
+@media (max-width: 768px) {
+    .settings-section {
+        padding: 1rem;
+    }
+    
+    .bulk-actions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .server-list-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    .server-list-category {
+        margin: 0;
+        align-self: flex-start;
+    }
+    
+    .rank-controls {
+        align-self: flex-end;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons .btn {
+        width: 100%;
+    }
+}
