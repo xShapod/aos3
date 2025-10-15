@@ -11,7 +11,6 @@ let servers = [
         rank: 1,
         createdAt: new Date('2023-01-15').getTime(),
         isFavorite: false,
-        performance: { uptime: 95, avgResponseTime: 120, lastWeekChecks: 42 }
     },
     {
         id: 2,
@@ -24,7 +23,6 @@ let servers = [
         rank: 2,
         createdAt: new Date('2023-02-20').getTime(),
         isFavorite: false,
-        performance: { uptime: 88, avgResponseTime: 180, lastWeekChecks: 38 }
     },
     {
         id: 3,
@@ -37,18 +35,12 @@ let servers = [
         rank: 3,
         createdAt: new Date('2023-03-10').getTime(),
         isFavorite: false,
-        performance: { uptime: 45, avgResponseTime: 450, lastWeekChecks: 20 }
     }
 ];
 
 let currentSort = 'manual';
 let currentCategory = 'all';
 let currentEditServerId = null;
-
-// Performance tracking
-let serverHistory = JSON.parse(localStorage.getItem('serverHistory')) || {};
-let checkRateLimit = {};
-const MAX_CHECKS_PER_MINUTE = 10;
 
 // Load servers from localStorage if available
 document.addEventListener('DOMContentLoaded', function() {
@@ -69,132 +61,19 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!server.lastResponseTime) {
                 server.lastResponseTime = null;
             }
-            if (!server.performance) {
-                server.performance = { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 };
-            }
         });
     } else {
         localStorage.setItem('ispServers', JSON.stringify(servers));
     }
     
-    // Load server history
-    const savedHistory = localStorage.getItem('serverHistory');
-    if (savedHistory) {
-        serverHistory = JSON.parse(savedHistory);
-    }
-    
     renderServers(currentCategory, currentSort);
     setupEventListeners();
-    updateQuickStats();
-    initializeTheme();
 });
 
-// ==================== THEME MANAGEMENT ====================
-
-function initializeTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    document.documentElement.setAttribute('data-theme', savedTheme);
-    
-    const themeToggle = document.getElementById('themeToggle');
-    if (themeToggle) {
-        const icon = themeToggle.querySelector('i');
-        icon.className = savedTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-        
-        themeToggle.addEventListener('click', function() {
-            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            
-            const icon = this.querySelector('i');
-            icon.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
-        });
-    }
-}
-
-// ==================== QUICK STATS ====================
-
-function updateQuickStats() {
-    const total = servers.length;
-    const online = servers.filter(s => s.status === 'active').length;
-    
-    // Calculate average response time
-    const serversWithResponse = servers.filter(s => s.lastResponseTime);
-    const avgResponse = serversWithResponse.length > 0 
-        ? Math.round(serversWithResponse.reduce((sum, s) => sum + s.lastResponseTime, 0) / serversWithResponse.length)
-        : 0;
-    
-    // Calculate system health (average of all server health scores)
-    const totalHealth = servers.reduce((sum, server) => sum + getServerHealthScore(server.id), 0);
-    const systemHealth = servers.length > 0 ? Math.round(totalHealth / servers.length) : 0;
-    
-    // Update DOM elements if they exist
-    if (document.getElementById('totalServers')) {
-        document.getElementById('totalServers').textContent = total;
-    }
-    if (document.getElementById('onlineServers')) {
-        document.getElementById('onlineServers').textContent = online;
-    }
-    if (document.getElementById('avgResponseTime')) {
-        document.getElementById('avgResponseTime').textContent = `${avgResponse}ms`;
-    }
-    if (document.getElementById('systemHealth')) {
-        document.getElementById('systemHealth').textContent = `${systemHealth}%`;
-    }
-}
-
-// ==================== HEALTH SCORE FUNCTIONS ====================
-
-function getServerHealthScore(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server || !server.performance) return 0;
-    
-    const { uptime, avgResponseTime } = server.performance;
-    
-    // Calculate score based on uptime (70%) and response time (30%)
-    let score = uptime * 0.7;
-    
-    if (avgResponseTime) {
-        const responseScore = Math.max(0, 100 - (avgResponseTime / 10));
-        score += responseScore * 0.3;
-    }
-    
-    return Math.round(score);
-}
-
-function getHealthLevel(score) {
-    if (score >= 80) return 'excellent';
-    if (score >= 60) return 'good';
-    if (score >= 40) return 'fair';
-    return 'poor';
-}
-
-// ==================== ENHANCED STATUS CHECKING ====================
-
-function isRateLimited(serverId) {
-    const now = Date.now();
-    const oneMinuteAgo = now - 60000;
-    
-    if (!checkRateLimit[serverId]) {
-        checkRateLimit[serverId] = [];
-    }
-    
-    checkRateLimit[serverId] = checkRateLimit[serverId].filter(time => time > oneMinuteAgo);
-    
-    if (checkRateLimit[serverId].length >= MAX_CHECKS_PER_MINUTE) {
-        return true;
-    }
-    
-    checkRateLimit[serverId].push(now);
-    return false;
-}
+// ==================== SERVER STATUS CHECKING ====================
 
 async function checkServerStatus(server) {
-    if (isRateLimited(server.id)) {
-        showToast(`Rate limit exceeded for ${server.name}. Please wait before checking again.`, 'warning');
-        return;
-    }
-    
+    // Show checking status immediately
     server.status = 'checking';
     server.lastChecked = Date.now();
     saveServers();
@@ -226,10 +105,8 @@ async function checkServerStatus(server) {
     } catch (error) {
         await checkServerWithImage(server, startTime);
     } finally {
-        trackServerPerformance(server.id, server.lastResponseTime, server.status);
         saveServers();
         renderServers(currentCategory, currentSort);
-        updateQuickStats();
     }
 }
 
@@ -265,120 +142,46 @@ function checkServerWithImage(server, startTime) {
     });
 }
 
-// ==================== PERFORMANCE TRACKING ====================
-
-function trackServerPerformance(serverId, responseTime, status) {
-    if (!serverHistory[serverId]) {
-        serverHistory[serverId] = [];
-    }
-    
-    const record = {
-        timestamp: Date.now(),
-        responseTime: responseTime,
-        status: status,
-        uptime: status === 'active'
-    };
-    
-    serverHistory[serverId].push(record);
-    
-    if (serverHistory[serverId].length > 1000) {
-        serverHistory[serverId] = serverHistory[serverId].slice(-1000);
-    }
-    
-    updateServerPerformanceMetrics(serverId);
-    saveServerHistory();
-}
-
-function updateServerPerformanceMetrics(serverId) {
+// Check status for a single server
+async function checkSingleServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
-    if (!server || !serverHistory[serverId]) return;
-    
-    const records = serverHistory[serverId];
-    const lastWeek = Date.now() - (7 * 24 * 60 * 60 * 1000);
-    const recentRecords = records.filter(r => r.timestamp > lastWeek);
-    
-    if (recentRecords.length === 0) return;
-    
-    const successfulChecks = recentRecords.filter(r => r.uptime).length;
-    const uptimePercentage = (successfulChecks / recentRecords.length) * 100;
-    
-    const successfulResponses = recentRecords.filter(r => r.uptime && r.responseTime);
-    const avgResponseTime = successfulResponses.length > 0 
-        ? Math.round(successfulResponses.reduce((sum, r) => sum + r.responseTime, 0) / successfulResponses.length)
-        : null;
-    
-    server.performance = {
-        uptime: Math.round(uptimePercentage),
-        avgResponseTime: avgResponseTime,
-        lastWeekChecks: recentRecords.length
-    };
-    
-    saveServers();
-}
-
-// ==================== CONTEXT MENU ====================
-
-function setupContextMenu() {
-    const contextMenu = document.getElementById('contextMenu');
-    
-    // Right-click on server rows
-    document.addEventListener('contextmenu', function(e) {
-        const serverRow = e.target.closest('.server-row');
-        if (serverRow) {
-            e.preventDefault();
-            const serverId = parseInt(serverRow.getAttribute('data-id'));
-            showContextMenu(e, serverId);
-        }
-    });
-    
-    // Hide context menu on click
-    document.addEventListener('click', function() {
-        contextMenu.style.display = 'none';
-    });
-    
-    // Context menu actions
-    contextMenu.addEventListener('click', function(e) {
-        const menuItem = e.target.closest('.context-menu-item');
-        if (menuItem) {
-            const action = menuItem.getAttribute('data-action');
-            const serverId = parseInt(contextMenu.getAttribute('data-server-id'));
-            handleContextMenuAction(action, serverId);
-        }
-    });
-}
-
-function showContextMenu(e, serverId) {
-    const contextMenu = document.getElementById('contextMenu');
-    contextMenu.style.display = 'block';
-    contextMenu.style.left = e.pageX + 'px';
-    contextMenu.style.top = e.pageY + 'px';
-    contextMenu.setAttribute('data-server-id', serverId);
-}
-
-function handleContextMenuAction(action, serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server) return;
-    
-    switch(action) {
-        case 'connect':
-            connectToServer(server.address);
-            break;
-        case 'check':
-            checkSingleServerStatus(serverId);
-            break;
-        case 'analytics':
-            showServerAnalytics(serverId);
-            break;
-        case 'favorite':
-            toggleFavorite(serverId);
-            break;
-        case 'edit':
-            openEditModal(serverId);
-            break;
-        case 'delete':
-            deleteServer(serverId);
-            break;
+    if (server) {
+        await checkServerStatus(server);
+        showToast(`Status checked for ${server.name}`);
     }
+}
+
+// Bulk status check for all servers
+async function checkAllServersStatus() {
+    showToast('Checking status of all servers...');
+    
+    for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        await checkServerStatus(server);
+        
+        // Add delay between checks to avoid overwhelming
+        if (i < servers.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    showToast('All servers status updated!');
+}
+
+// Helper function for relative time display
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return 'Never';
+    
+    const now = Date.now();
+    const diff = now - timestamp;
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    return 'Just now';
 }
 
 // ==================== BATCH IMPORT ====================
@@ -425,8 +228,7 @@ function importFromText() {
                         createdAt: Date.now(),
                         isFavorite: false,
                         lastChecked: null,
-                        lastResponseTime: null,
-                        performance: { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+                        lastResponseTime: null
                     });
                     importedCount++;
                 } else {
@@ -444,73 +246,11 @@ function importFromText() {
         servers = [...servers, ...newServers];
         saveServers();
         renderServers(currentCategory, currentSort);
-        updateQuickStats();
         closeAllManagementModals();
     }
     
     showToast(`Imported ${importedCount} servers. ${errorCount} entries skipped.`, 
               importedCount > 0 ? 'success' : 'warning');
-}
-
-// ==================== CLOUD SYNC ====================
-
-function syncToCloud() {
-    showToast('Syncing to cloud...', 'info');
-    
-    // Simulate cloud sync
-    setTimeout(() => {
-        const syncData = {
-            servers: servers,
-            timestamp: Date.now(),
-            version: '1.0'
-        };
-        
-        localStorage.setItem('cloudSync', JSON.stringify(syncData));
-        showToast('Data synced to cloud successfully!');
-    }, 1000);
-}
-
-// ==================== SERVER ANALYTICS ====================
-
-function showServerAnalytics(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server) return;
-    
-    const history = serverHistory[serverId] || [];
-    const healthScore = getServerHealthScore(serverId);
-    
-    // Populate analytics modal
-    document.getElementById('analyticsServerName').textContent = server.name;
-    document.getElementById('analyticsHealthScore').textContent = `${healthScore}%`;
-    document.getElementById('analyticsUptime').textContent = `${server.performance?.uptime || 0}%`;
-    document.getElementById('analyticsAvgResponse').textContent = server.performance?.avgResponseTime ? `${server.performance.avgResponseTime}ms` : 'N/A';
-    document.getElementById('analyticsTotalChecks').textContent = history.length;
-    
-    // Show analytics modal
-    document.getElementById('serverAnalyticsModal').style.display = 'flex';
-    
-    // Render performance chart
-    renderPerformanceChart(serverId);
-}
-
-function renderPerformanceChart(serverId) {
-    const history = serverHistory[serverId] || [];
-    const chartContainer = document.getElementById('performanceChart');
-    
-    if (history.length === 0) {
-        chartContainer.innerHTML = '<div class="empty-chart">No performance data available</div>';
-        return;
-    }
-    
-    const recentData = history.slice(-20);
-    const chartHtml = recentData.map((record, index) => `
-        <div class="chart-bar" style="height: ${Math.min(100, (record.responseTime || 0) / 5)}%" 
-             title="Response: ${record.responseTime || 'N/A'}ms - ${new Date(record.timestamp).toLocaleTimeString()}">
-            <div class="bar-fill ${record.status === 'active' ? 'active' : 'inactive'}"></div>
-        </div>
-    `).join('');
-    
-    chartContainer.innerHTML = chartHtml;
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -523,21 +263,6 @@ function getCategoryDisplayName(category) {
         'others': 'Others'
     };
     return categories[category] || category;
-}
-
-function formatRelativeTime(timestamp) {
-    if (!timestamp) return 'Never';
-    
-    const now = Date.now();
-    const diff = now - timestamp;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-    return 'Just now';
 }
 
 function normalizeAddress(address) {
@@ -595,10 +320,6 @@ function renderServers(category, sortBy) {
     if (category !== 'all') {
         if (category === 'favorites') {
             filteredServers = servers.filter(server => server.isFavorite);
-        } else if (category === 'healthy') {
-            filteredServers = servers.filter(server => getServerHealthScore(server.id) >= 80);
-        } else if (category === 'unhealthy') {
-            filteredServers = servers.filter(server => getServerHealthScore(server.id) < 50);
         } else {
             filteredServers = filteredServers.filter(server => server.categories.includes(category));
         }
@@ -638,7 +359,6 @@ function renderServers(category, sortBy) {
                 <div class="col-name">Server Name</div>
                 <div class="col-address">Address</div>
                 <div class="col-type">Type</div>
-                <div class="col-performance">Performance</div>
                 <div class="col-response">Response</div>
                 <div class="col-actions">Actions</div>
             </div>
@@ -650,7 +370,6 @@ function renderServers(category, sortBy) {
     const tableBody = document.getElementById('tableBody');
     
     filteredServers.forEach(server => {
-        const healthScore = getServerHealthScore(server.id);
         const tableRow = document.createElement('div');
         tableRow.className = `table-row server-row ${server.isFavorite ? 'favorite' : ''}`;
         tableRow.setAttribute('data-id', server.id);
@@ -678,22 +397,6 @@ function renderServers(category, sortBy) {
             <div class="col-type">
                 <span class="type-badge ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
             </div>
-            <div class="col-performance">
-                <div class="performance-indicator">
-                    <div class="health-score health-${getHealthLevel(healthScore)}" title="Health Score: ${healthScore}%">
-                        <div class="health-bar">
-                            <div class="health-fill" style="width: ${healthScore}%"></div>
-                        </div>
-                        <span class="health-text">${healthScore}%</span>
-                    </div>
-                    ${server.performance && server.performance.uptime ? `
-                        <div class="uptime-indicator" title="Uptime: ${server.performance.uptime}%">
-                            <i class="fas fa-chart-line"></i>
-                            ${server.performance.uptime}%
-                        </div>
-                    ` : ''}
-                </div>
-            </div>
             <div class="col-response">
                 ${server.lastResponseTime ? `
                     <div class="response-time">
@@ -710,9 +413,6 @@ function renderServers(category, sortBy) {
                     </button>
                     <button class="btn-action btn-check" onclick="checkSingleServerStatus(${server.id})" title="Check Status">
                         <i class="fas fa-sync-alt"></i>
-                    </button>
-                    <button class="btn-action btn-chart" onclick="showServerAnalytics(${server.id})" title="View Analytics">
-                        <i class="fas fa-chart-bar"></i>
                     </button>
                     <button class="btn-action btn-edit" onclick="openEditModal(${server.id})" title="Edit Server">
                         <i class="fas fa-edit"></i>
@@ -740,18 +440,6 @@ function sortServers(servers, sortBy) {
             return sortedServers.sort((a, b) => a.name.localeCompare(b.name));
         case 'recent':
             return sortedServers.sort((a, b) => b.createdAt - a.createdAt);
-        case 'smart':
-            return sortedServers.sort((a, b) => {
-                const scoreA = getServerHealthScore(a.id);
-                const scoreB = getServerHealthScore(b.id);
-                return scoreB - scoreA;
-            });
-        case 'performance':
-            return sortedServers.sort((a, b) => {
-                const perfA = a.performance?.uptime || 0;
-                const perfB = b.performance?.uptime || 0;
-                return perfB - perfA;
-            });
         default:
             return sortedServers;
     }
@@ -872,34 +560,8 @@ function setupEventListeners() {
     const saveEdit = document.getElementById('saveEdit');
     if (saveEdit) saveEdit.addEventListener('click', saveEditChanges);
     
-    // Analytics modal
-    const closeAnalyticsModal = document.getElementById('closeAnalyticsModal');
-    if (closeAnalyticsModal) {
-        closeAnalyticsModal.addEventListener('click', function() {
-            document.getElementById('serverAnalyticsModal').style.display = 'none';
-        });
-    }
-    
     // Close modals when clicking outside
     setupModalCloseEvents();
-    
-    // Context menu
-    setupContextMenu();
-    
-    // Character count for description
-    const serverDescription = document.getElementById('serverDescription');
-    if (serverDescription) {
-        serverDescription.addEventListener('input', function() {
-            document.getElementById('descCharCount').textContent = this.value.length;
-        });
-    }
-    
-    const editDescription = document.getElementById('editDescription');
-    if (editDescription) {
-        editDescription.addEventListener('input', function() {
-            document.getElementById('editDescCharCount').textContent = this.value.length;
-        });
-    }
 }
 
 function setupModalCloseEvents() {
@@ -908,8 +570,7 @@ function setupModalCloseEvents() {
         'exportImportModal',
         'editServerModal', 
         'manageServersModal',
-        'importUrlModal',
-        'serverAnalyticsModal'
+        'importUrlModal'
     ];
     
     modals.forEach(modalId => {
@@ -939,7 +600,6 @@ function closeAllManagementModals() {
     document.getElementById('exportImportModal').style.display = 'none';
     document.getElementById('importUrlModal').style.display = 'none';
     document.getElementById('manageServersModal').style.display = 'none';
-    document.getElementById('serverAnalyticsModal').style.display = 'none';
 }
 
 // ==================== SERVER MANAGEMENT ====================
@@ -984,17 +644,14 @@ function addServer() {
         createdAt: Date.now(),
         isFavorite: false,
         lastChecked: null,
-        lastResponseTime: null,
-        performance: { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+        lastResponseTime: null
     };
     
     servers.push(newServer);
     saveServers();
     renderServers(currentCategory, currentSort);
-    updateQuickStats();
     
     document.getElementById('serverForm').reset();
-    document.getElementById('descCharCount').textContent = '0';
     
     closeAllManagementModals();
     showToast(`Server "${name}" added successfully!`);
@@ -1010,7 +667,6 @@ function openEditModal(serverId) {
         document.getElementById('editStatus').value = server.status;
         document.getElementById('editType').value = server.type;
         document.getElementById('editDescription').value = server.description || '';
-        document.getElementById('editDescCharCount').textContent = server.description?.length || 0;
         
         const categoryCheckboxes = document.querySelectorAll('#editModalBody input[name="editCategories"]');
         categoryCheckboxes.forEach(checkbox => {
@@ -1072,7 +728,6 @@ function deleteServer(id) {
         
         saveServers();
         renderServers(currentCategory, currentSort);
-        updateQuickStats();
         
         showToast(`Server "${serverName}" deleted successfully!`);
     }
@@ -1085,14 +740,6 @@ function toggleFavorite(serverId) {
         saveServers();
         renderServers(currentCategory, currentSort);
         showToast(server.isFavorite ? 'Added to favorites!' : 'Removed from favorites!');
-    }
-}
-
-function checkSingleServerStatus(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (server) {
-        checkServerStatus(server);
-        showToast(`Status checked for ${server.name}`);
     }
 }
 
@@ -1197,8 +844,7 @@ function handleFileUpload(event) {
                     createdAt: server.createdAt || Date.now(),
                     isFavorite: server.isFavorite || false,
                     lastChecked: server.lastChecked || null,
-                    lastResponseTime: server.lastResponseTime || null,
-                    performance: server.performance || { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+                    lastResponseTime: server.lastResponseTime || null
                 }));
                 importedServers = importedServers.filter(s => s.address);
 
@@ -1206,7 +852,6 @@ function handleFileUpload(event) {
                     servers = importedServers;
                     saveServers();
                     renderServers(currentCategory, currentSort);
-                    updateQuickStats();
                     showToast('Servers restored from backup!');
                     closeAllManagementModals();
                 } else {
@@ -1224,7 +869,6 @@ function handleFileUpload(event) {
                     servers = finalServers;
                     saveServers();
                     renderServers(currentCategory, currentSort);
-                    updateQuickStats();
                     showToast(`Servers merged with backup! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
                     closeAllManagementModals();
                 }
@@ -1248,7 +892,6 @@ function replaceServers() {
             servers = importedServers;
             saveServers();
             renderServers(currentCategory, currentSort);
-            updateQuickStats();
             closeAllManagementModals();
             showToast('All servers replaced successfully!');
         } else {
@@ -1276,8 +919,7 @@ function mergeServers() {
                 createdAt: server.createdAt || Date.now(),
                 isFavorite: server.isFavorite || false,
                 lastChecked: server.lastChecked || null,
-                lastResponseTime: server.lastResponseTime || null,
-                performance: server.performance || { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+                lastResponseTime: server.lastResponseTime || null
             }));
             importedServers = importedServers.filter(s => s.address);
 
@@ -1295,7 +937,6 @@ function mergeServers() {
             servers = finalServers;
             saveServers();
             renderServers(currentCategory, currentSort);
-            updateQuickStats();
             closeAllManagementModals();
             showToast(`Servers merged successfully! Added ${importedServers.length - duplicatesSkipped} new entries.`, duplicatesSkipped > 0 ? 'warning' : 'success');
         } else {
@@ -1327,8 +968,7 @@ function parseTxtServers(text) {
                 createdAt: Date.now(),
                 isFavorite: false,
                 lastChecked: null,
-                lastResponseTime: null,
-                performance: { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+                lastResponseTime: null
              });
         }
     }
@@ -1384,8 +1024,7 @@ async function importFromURL() {
             createdAt: server.createdAt || Date.now(),
             isFavorite: server.isFavorite || false,
             lastChecked: server.lastChecked || null,
-            lastResponseTime: server.lastResponseTime || null,
-            performance: server.performance || { uptime: 0, avgResponseTime: null, lastWeekChecks: 0 }
+            lastResponseTime: server.lastResponseTime || null
         }));
         
         importedServers = importedServers.filter(s => s.address);
@@ -1411,7 +1050,6 @@ async function importFromURL() {
         
         saveServers();
         renderServers(currentCategory, currentSort);
-        updateQuickStats();
         closeAllManagementModals();
         
     } catch (e) {
@@ -1438,8 +1076,4 @@ function showToast(message, type = 'success') {
 
 function saveServers() {
     localStorage.setItem('ispServers', JSON.stringify(servers));
-}
-
-function saveServerHistory() {
-    localStorage.setItem('serverHistory', JSON.stringify(serverHistory));
 }
