@@ -42,10 +42,6 @@ let currentSort = 'manual';
 let currentCategory = 'all';
 let currentEditServerId = null;
 
-// ==================== AUTO-REFRESH VARIABLES ====================
-let autoRefreshInterval = null;
-let autoRefreshEnabled = false;
-
 // Load servers from localStorage if available
 document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
@@ -78,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     renderServers(currentCategory, currentSort);
     setupEventListeners();
-    initializeAutoRefresh(); // Initialize auto-refresh
 });
 
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
@@ -186,47 +181,6 @@ async function checkAllServersStatus() {
     showToast('All servers status updated!');
 }
 
-// Quick status check (only checks if server is reachable, faster)
-async function quickCheckServerStatus(serverId) {
-    const server = servers.find(s => s.id === serverId);
-    if (!server) return;
-
-    server.status = 'checking';
-    renderServers(currentCategory, currentSort);
-
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-        await fetch(server.address, {
-            method: 'HEAD',
-            mode: 'no-cors',
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        server.status = 'active';
-    } catch (error) {
-        server.status = 'inactive';
-    } finally {
-        server.lastChecked = Date.now();
-        saveServers();
-        renderServers(currentCategory, currentSort);
-    }
-}
-
-// Quick check all function
-async function quickCheckAllStatus() {
-    showToast('Quick checking all servers...');
-    
-    const promises = servers.map(async (server) => {
-        await quickCheckServerStatus(server.id);
-    });
-    
-    await Promise.all(promises);
-    showToast('Quick status check completed!');
-}
-
 // Helper function for relative time display
 function formatRelativeTime(timestamp) {
     if (!timestamp) return 'Never';
@@ -313,80 +267,6 @@ function exportServersByCategory(category) {
     URL.revokeObjectURL(url);
     
     showToast(`${filteredServers.length} servers exported!`);
-}
-
-// ==================== AUTO-REFRESH STATUS ====================
-
-// Initialize auto-refresh from saved settings
-function initializeAutoRefresh() {
-    const savedAutoRefresh = localStorage.getItem('autoRefreshEnabled');
-    const savedInterval = localStorage.getItem('autoRefreshInterval');
-    
-    if (savedAutoRefresh === 'true') {
-        autoRefreshEnabled = true;
-        const interval = savedInterval ? parseInt(savedInterval) : 5;
-        startAutoRefresh(interval);
-        updateAutoRefreshUI(true, interval);
-    }
-}
-
-// Start auto-refresh
-function startAutoRefresh(intervalMinutes = 5) {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    
-    autoRefreshInterval = setInterval(() => {
-        showToast(`Auto-refresh: Checking all servers...`, 'info');
-        quickCheckAllStatus();
-    }, intervalMinutes * 60 * 1000);
-    
-    autoRefreshEnabled = true;
-    localStorage.setItem('autoRefreshEnabled', 'true');
-    localStorage.setItem('autoRefreshInterval', intervalMinutes.toString());
-    
-    showToast(`Auto-refresh started (every ${intervalMinutes} minutes)`);
-    updateAutoRefreshUI(true, intervalMinutes);
-}
-
-// Stop auto-refresh
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-    }
-    
-    autoRefreshEnabled = false;
-    localStorage.setItem('autoRefreshEnabled', 'false');
-    updateAutoRefreshUI(false, 0);
-    showToast('Auto-refresh stopped');
-}
-
-// Toggle auto-refresh
-function toggleAutoRefresh() {
-    if (autoRefreshEnabled) {
-        stopAutoRefresh();
-    } else {
-        const interval = parseInt(document.getElementById('autoRefreshInterval').value) || 5;
-        startAutoRefresh(interval);
-    }
-}
-
-// Update auto-refresh UI
-function updateAutoRefreshUI(enabled, interval) {
-    const toggleBtn = document.getElementById('autoRefreshToggle');
-    const statusSpan = document.getElementById('autoRefreshStatus');
-    const refreshBar = document.getElementById('autoRefreshBar');
-    
-    if (toggleBtn && statusSpan) {
-        toggleBtn.innerHTML = enabled ? 
-            '<i class="fas fa-stop"></i> Stop Auto-Refresh' : 
-            '<i class="fas fa-play"></i> Start Auto-Refresh';
-        toggleBtn.className = enabled ? 'btn btn-warning' : 'btn btn-success';
-        statusSpan.textContent = enabled ? `Running (every ${interval} minutes)` : 'Stopped';
-    }
-    
-    if (refreshBar) {
-        refreshBar.style.display = enabled ? 'block' : 'none';
-    }
 }
 
 // ==================== PROFESSIONAL TABLE RENDER FUNCTION ====================
@@ -1075,9 +955,9 @@ function setupEventListeners() {
         addServer();
     });
     
-    // Settings button
-    document.getElementById('settingsBtn').addEventListener('click', function() {
-        window.location.href = 'settings.html';
+    // Tools button
+    document.getElementById('toolsBtn').addEventListener('click', function() {
+        window.location.href = 'tools.html';
     });
 
     // Manage Servers Modal Open/Close
@@ -1115,9 +995,6 @@ function setupEventListeners() {
     // Edit modal events
     document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
     document.getElementById('saveEdit').addEventListener('click', saveEditChanges);
-    
-    // Auto-refresh toggle
-    document.getElementById('autoRefreshToggle').addEventListener('click', toggleAutoRefresh);
     
     // Close modals when clicking outside
     document.getElementById('exportImportModal').addEventListener('click', function(e) {
