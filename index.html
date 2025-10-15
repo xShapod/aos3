@@ -4,11 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ISP Media Hub - Professional Server Management</title>
-    <meta name="description" content="Manage and monitor your BDIX and media servers with advanced analytics">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -30,9 +25,6 @@
                     <button class="btn btn-info" id="toolsBtn">
                         <i class="fas fa-tools"></i> Tools
                     </button>
-                    <button class="btn btn-secondary" id="themeToggle">
-                        <i class="fas fa-moon"></i>
-                    </button>
                 </div>
             </div>
         </div>
@@ -41,26 +33,6 @@
     <div class="container">
         <div class="banner">
             <img src="https://i.ibb.co/MyNgy0pF/1760299817553.png" alt="ISP Media Hub Banner">
-        </div>
-        
-        <!-- Quick Stats Bar -->
-        <div class="quick-stats-bar">
-            <div class="stat-item">
-                <div class="stat-value" id="totalServers">0</div>
-                <div class="stat-label">Total Servers</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="onlineServers">0</div>
-                <div class="stat-label">Online</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="avgResponseTime">0ms</div>
-                <div class="stat-label">Avg Response</div>
-            </div>
-            <div class="stat-item">
-                <div class="stat-value" id="systemHealth">0%</div>
-                <div class="stat-label">System Health</div>
-            </div>
         </div>
         
         <div class="control-bar">
@@ -74,12 +46,6 @@
                 <button class="sort-btn" data-sort="recent">
                     <i class="fas fa-clock"></i> Recent
                 </button>
-                <button class="sort-btn" data-sort="smart">
-                    <i class="fas fa-brain"></i> Smart Rank
-                </button>
-                <button class="sort-btn" data-sort="performance">
-                    <i class="fas fa-chart-line"></i> Performance
-                </button>
             </div>
             
             <div class="category-tabs">
@@ -90,14 +56,6 @@
                 <div class="tab" data-category="favorites">
                     <i class="fas fa-star"></i>
                     Favorites
-                </div>
-                <div class="tab" data-category="healthy">
-                    <i class="fas fa-heart"></i>
-                    Healthy
-                </div>
-                <div class="tab" data-category="unhealthy">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Unhealthy
                 </div>
                 <div class="tab" data-category="live">
                     <i class="fas fa-tv"></i>
@@ -134,30 +92,6 @@
         </footer>
     </div>
 
-    <!-- Quick Actions Context Menu -->
-    <div id="contextMenu" class="context-menu">
-        <div class="context-menu-item" data-action="connect">
-            <i class="fas fa-external-link-alt"></i> Open Server
-        </div>
-        <div class="context-menu-item" data-action="check">
-            <i class="fas fa-sync-alt"></i> Check Status
-        </div>
-        <div class="context-menu-item" data-action="analytics">
-            <i class="fas fa-chart-bar"></i> View Analytics
-        </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="favorite">
-            <i class="fas fa-star"></i> Toggle Favorite
-        </div>
-        <div class="context-menu-item" data-action="edit">
-            <i class="fas fa-edit"></i> Edit Server
-        </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" data-action="delete">
-            <i class="fas fa-trash"></i> Delete Server
-        </div>
-    </div>
-
     <!-- Manage Servers Modal -->
     <div class="modal" id="manageServersModal">
         <div class="modal-content">
@@ -172,13 +106,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="serverName">Server Name</label>
-                            <input type="text" class="form-control" id="serverName" required maxlength="100">
-                            <div class="validation-message" id="nameValidation"></div>
+                            <input type="text" class="form-control" id="serverName" required>
                         </div>
                         <div class="form-group">
                             <label for="serverAddress">Server Address</label>
                             <input type="text" class="form-control" id="serverAddress" placeholder="http://, https://, or ftp:// address" required>
-                            <div class="validation-message" id="addressValidation"></div>
                         </div>
                     </div>
                     <div class="form-row">
@@ -209,8 +141,7 @@
                     </div>
                     <div class="form-group">
                         <label for="serverDescription">Description (Optional)</label>
-                        <textarea class="form-control" id="serverDescription" rows="3" maxlength="500"></textarea>
-                        <div class="char-count"><span id="descCharCount">0</span>/500</div>
+                        <textarea class="form-control" id="serverDescription" rows="3"></textarea>
                     </div>
                     <button type="submit" class="btn btn-success" style="width: 100%;">
                         <i class="fas fa-plus-circle"></i> Add Server
@@ -248,106 +179,11 @@
                          <i class="fas fa-link"></i> Import from URL
                     </button>
                 </div>
-                <div class="form-row" style="margin-top: 0.5rem;">
-                    <button class="btn btn-outline-info" onclick="syncToCloud()" style="width: 100%;">
-                         <i class="fas fa-cloud-upload-alt"></i> Sync to Cloud
-                    </button>
-                </div>
             </div>
         </div>
     </div>
 
-    <!-- Server Analytics Modal -->
-    <div class="modal" id="serverAnalyticsModal">
-        <div class="modal-content large-modal">
-            <div class="modal-header">
-                <h3><i class="fas fa-chart-bar"></i> Server Analytics</h3>
-                <button class="close-modal" id="closeAnalyticsModal">&times;</button>
-            </div>
-            <div class="analytics-content">
-                <div class="analytics-header">
-                    <div class="server-info">
-                        <h4 id="analyticsServerName">Server Name</h4>
-                        <div class="server-meta">
-                            <span class="address" id="analyticsServerAddress">http://server.com</span>
-                        </div>
-                    </div>
-                    <div class="health-score-large">
-                        <div class="score-circle">
-                            <span id="analyticsHealthScore">85%</span>
-                        </div>
-                        <div class="score-label">Health Score</div>
-                    </div>
-                </div>
-                
-                <div class="analytics-stats">
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="analyticsUptime">95%</div>
-                            <div class="stat-label">Uptime</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-bolt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="analyticsAvgResponse">120ms</div>
-                            <div class="stat-label">Avg Response</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-sync-alt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="analyticsTotalChecks">156</div>
-                            <div class="stat-label">Total Checks</div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar"></i>
-                        </div>
-                        <div class="stat-info">
-                            <div class="stat-value" id="analyticsLastWeek">42</div>
-                            <div class="stat-label">Last Week</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="performance-chart">
-                    <h5>Response Time History</h5>
-                    <div class="chart-container" id="performanceChart">
-                        <!-- Chart will be rendered here -->
-                    </div>
-                </div>
-                
-                <div class="performance-trends">
-                    <h5>Performance Trends</h5>
-                    <div class="trends-grid">
-                        <div class="trend-item">
-                            <div class="trend-label">24h Performance</div>
-                            <div class="trend-value positive">+5%</div>
-                        </div>
-                        <div class="trend-item">
-                            <div class="trend-label">7d Reliability</div>
-                            <div class="trend-value positive">+2%</div>
-                        </div>
-                        <div class="trend-item">
-                            <div class="trend-label">Response Trend</div>
-                            <div class="trend-value negative">-8ms</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Other modals remain the same as before -->
+    <!-- Other modals -->
     <div class="modal" id="exportImportModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -412,7 +248,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="editServerName">Server Name</label>
-                        <input type="text" class="form-control" id="editServerName" required maxlength="100">
+                        <input type="text" class="form-control" id="editServerName" required>
                     </div>
                     <div class="form-group">
                         <label for="editServerAddress">Server Address</label>
@@ -454,8 +290,7 @@
                 </div>
                 <div class="form-group">
                     <label for="editDescription">Description</label>
-                    <textarea class="form-control" id="editDescription" rows="3" maxlength="500"></textarea>
-                    <div class="char-count"><span id="editDescCharCount">0</span>/500</div>
+                    <textarea class="form-control" id="editDescription" rows="3"></textarea>
                 </div>
                 <button class="btn btn-success" id="saveEdit" style="width: 100%;">
                     <i class="fas fa-save"></i> Save Changes
@@ -469,14 +304,5 @@
     <div class="toast" id="toast"></div>
 
     <script src="app.js"></script>
-    
-    <!-- PWA Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => console.log('SW registered'))
-                .catch(error => console.log('SW registration failed'));
-        }
-    </script>
 </body>
 </html>
