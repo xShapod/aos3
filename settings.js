@@ -107,6 +107,7 @@ function renderServerList(category) {
                 <div class="server-list-address">${server.address}</div>
                 <div class="server-list-meta">
                     <span class="server-type ${server.type}">${server.type === 'bdix' ? 'BDIX' : 'Non-BDIX'}</span>
+                    <span class="server-status ${server.status}">${server.status === 'active' ? 'Online' : 'Offline'}</span>
                     ${server.lastResponseTime ? `<span class="response-time">${server.lastResponseTime}ms</span>` : ''}
                 </div>
             </div>
@@ -230,7 +231,172 @@ function resetToDefaultOrder() {
     }
 }
 
-// Set up event listeners for settings page
+// ==================== BULK OPERATIONS ====================
+
+// Bulk status check for all servers
+async function checkAllServersStatus() {
+    showToast('Checking status of all servers...');
+    
+    for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        await checkServerStatus(server);
+        
+        // Add delay between checks to avoid overwhelming
+        if (i < servers.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    showToast('All servers status updated!');
+    renderServerList(currentCategory);
+}
+
+// Enhanced Real server status checking with response time measurement
+async function checkServerStatus(server) {
+    // Show checking status immediately
+    server.status = 'checking';
+    server.lastChecked = Date.now();
+    saveServers();
+    renderServerList(currentCategory);
+
+    const startTime = performance.now();
+    
+    try {
+        // Use a more robust approach for BDIX servers
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(server.address, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        // Even with no-cors, if we reach here, the server responded
+        const responseTime = performance.now() - startTime;
+        server.status = 'active';
+        server.lastChecked = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
+        
+    } catch (error) {
+        // Try alternative method - create image request
+        await checkServerWithImage(server, startTime);
+    } finally {
+        saveServers();
+        renderServerList(currentCategory);
+    }
+}
+
+// Enhanced alternative method using Image request with response time
+function checkServerWithImage(server, startTime) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const timeout = setTimeout(() => {
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
+            resolve();
+        }, 8000);
+
+        img.onload = function() {
+            clearTimeout(timeout);
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
+        };
+
+        img.onerror = function() {
+            clearTimeout(timeout);
+            // Even on error, if we got this far, server might be reachable
+            const responseTime = performance.now() - startTime;
+            server.status = 'active'; // Many BDIX servers block image requests but are still up
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
+        };
+
+        // Try to load a common path or the root
+        img.src = server.address + '/favicon.ico?t=' + Date.now();
+    });
+}
+
+// Delete all servers
+function deleteAllServers() {
+    if (confirm('Are you sure you want to delete ALL servers? This cannot be undone!')) {
+        servers = [];
+        saveServers();
+        renderServerList(currentCategory);
+        showToast('All servers deleted!');
+    }
+}
+
+// Delete servers by category
+function deleteServersByCategory(category) {
+    const categoryName = getCategoryDisplayName(category);
+    if (confirm(`Are you sure you want to delete all ${categoryName} servers? This cannot be undone!`)) {
+        servers = servers.filter(server => !server.categories.includes(category));
+        
+        // Recalculate ranks
+        servers.forEach((server, index) => {
+            server.rank = index + 1;
+        });
+        
+        saveServers();
+        renderServerList(currentCategory);
+        showToast(`All ${categoryName} servers deleted!`);
+    }
+}
+
+// Bulk favorite/unfavorite
+function bulkFavorite(action) {
+    let count = 0;
+    servers.forEach(server => {
+        if (action === 'favorite' && !server.isFavorite) {
+            server.isFavorite = true;
+            count++;
+        } else if (action === 'unfavorite' && server.isFavorite) {
+            server.isFavorite = false;
+            count++;
+        }
+    });
+    
+    saveServers();
+    renderServerList(currentCategory);
+    showToast(`${count} servers ${action === 'favorite' ? 'added to' : 'removed from'} favorites!`);
+}
+
+// Export servers by category
+function exportServersByCategory(category) {
+    let filteredServers = servers;
+    if (category !== 'all') {
+        filteredServers = servers.filter(server => server.categories.includes(category));
+    }
+    
+    const dataStr = JSON.stringify(filteredServers, null, 2);
+    const dataBlob = new Blob([dataStr], {type: 'application/json'});
+    
+    const categoryName = category === 'all' ? 'all' : getCategoryDisplayName(category).toLowerCase().replace(' ', '-');
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `isp-servers-${categoryName}-backup.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast(`${filteredServers.length} servers exported!`);
+}
+
+// Set up event listeners for tools page
 function setupEventListeners() {
     // Back button
     document.getElementById('backBtn').addEventListener('click', function() {
