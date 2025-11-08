@@ -87,37 +87,6 @@ header {
     align-items: center;
 }
 
-.search {
-    position: relative;
-    min-width: 300px;
-}
-
-.search .form-control {
-    padding-left: 2.5rem;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.search .form-control:focus {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
-.search::before {
-    content: '\f002';
-    font-family: 'Font Awesome 6 Free';
-    font-weight: 900;
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--gray-400);
-    z-index: 1;
-}
-
 /* Professional Buttons */
 .btn {
     padding: 0.625rem 1.25rem;
@@ -161,9 +130,30 @@ header {
     color: white;
 }
 
+.btn-success:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
 .btn-warning {
     background: var(--warning);
     color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: rgba(100, 116, 139, 0.1);
+    color: var(--secondary);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.btn-secondary:hover {
+    background: rgba(100, 116, 139, 0.2);
+    border-color: var(--secondary);
 }
 
 .btn-danger {
@@ -175,6 +165,24 @@ header {
 .btn-danger:hover {
     background: rgba(239, 68, 68, 0.2);
     border-color: var(--danger);
+}
+
+/* Check All Status Section (Home Page) */
+.check-all-section {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.check-all-section .btn {
+    flex: 1;
+    min-width: 200px;
+    justify-content: center;
 }
 
 /* Main Content */
@@ -490,25 +498,6 @@ header {
     color: var(--gray-500);
 }
 
-/* Auto Refresh Bar */
-.auto-refresh-bar {
-    background: rgba(6, 182, 212, 0.1);
-    border: 1px solid rgba(6, 182, 212, 0.2);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    margin-bottom: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-}
-
-.refresh-status {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
 /* Footer */
 footer {
     text-align: center;
@@ -682,9 +671,249 @@ footer a:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type="checkbox"],
+.checkbox-label input[type="radio"] {
     width: 16px;
     height: 16px;
+}
+
+/* ==================== SETTINGS PAGE STYLES ==================== */
+
+.settings-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.section-header {
+    margin-bottom: 2rem;
+}
+
+.section-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.section-header h2 i {
+    color: var(--primary);
+}
+
+.section-header p {
+    color: var(--gray-400);
+    font-size: 0.95rem;
+}
+
+.section-divider {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 2rem 0;
+}
+
+/* Server List for Sorting */
+.server-list {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.server-list-item {
+    display: grid;
+    grid-template-columns: 40px 1fr 120px 80px;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    align-items: center;
+    cursor: move;
+    transition: all 0.3s ease;
+}
+
+.server-list-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary);
+}
+
+.server-rank-number {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--primary);
+    text-align: center;
+}
+
+.server-list-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.server-list-name {
+    font-weight: 600;
+    color: var(--light);
+}
+
+.server-list-address {
+    font-size: 0.8rem;
+    color: var(--gray-400);
+    font-family: monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.server-list-meta {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.server-type {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.server-type.bdix {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--success);
+}
+
+.server-type.non-bdix {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+}
+
+.response-time {
+    font-size: 0.8rem;
+    color: var(--warning);
+}
+
+.server-list-category {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.rank-controls {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.rank-btn {
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.75rem;
+}
+
+.rank-btn:hover:not(:disabled) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.rank-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Settings Actions */
+.settings-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.settings-actions .btn {
+    flex: 1;
+    min-width: 150px;
+    justify-content: center;
+}
+
+/* Bulk Actions Grid */
+.bulk-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.action-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(37, 99, 235, 0.3);
+    transform: translateY(-2px);
+}
+
+.action-card.danger {
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.action-card.danger:hover {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.action-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.action-card-header i {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.action-card.danger .action-card-header i {
+    color: var(--danger);
+}
+
+.action-card-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.action-card p {
+    color: var(--gray-400);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.action-card-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-direction: column;
+}
+
+.action-card-buttons .btn {
+    width: 100%;
+    justify-content: center;
 }
 
 /* Responsive Design */
@@ -696,34 +925,26 @@ footer a:hover {
     }
 }
 
-/* BEGIN MODIFIED BLOCK FOR MOBILE FIX */
 @media (max-width: 768px) {
     .header-content {
-        /* Was flex-direction: column; This is changed to make it responsive but keep the two main parts separate */
         flex-direction: column;
-        align-items: flex-start; /* Aligns the logo to the left */
+        align-items: flex-start;
         gap: 1rem;
     }
     
     .header-actions {
         width: 100%;
-        /* Change from justify-content: center; to start for better alignment */
         justify-content: flex-start;
-        /* Ensure actions remain in one row for the horizontal effect */
         flex-wrap: nowrap;
-        /* New: Allow items to shrink */
         min-width: 0; 
     }
     
     .search {
-        /* This overrides the desktop min-width of 300px */
         min-width: 0;
-        /* Allow search to grow and take up the majority of the remaining space */
         flex-grow: 1;
         flex-shrink: 1;
     }
     
-    /* NEW: Reduce button padding/font size slightly to help fit on very small screens */
     .btn {
         padding: 0.5rem 0.75rem;
         font-size: 0.75rem;
@@ -805,8 +1026,33 @@ footer a:hover {
     .form-row {
         flex-direction: column;
     }
+
+    .check-all-section {
+        flex-direction: column;
+    }
+
+    .check-all-section .btn {
+        width: 100%;
+    }
+
+    .settings-section {
+        padding: 1.5rem;
+    }
+
+    .bulk-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .server-list-item {
+        grid-template-columns: 30px 1fr;
+        gap: 0.5rem;
+    }
+
+    .rank-controls {
+        grid-column: span 2;
+        justify-content: flex-end;
+    }
 }
-/* END MODIFIED BLOCK FOR MOBILE FIX */
 
 @media (max-width: 480px) {
     .container {
