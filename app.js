@@ -132,10 +132,10 @@ function checkServerWithImage(server, startTime) {
 
         img.onerror = function() {
             clearTimeout(timeout);
-            const responseTime = performance.now() - startTime;
-            server.status = 'active';
+            // FIXED: Image failed to load = server error (403, 404, etc)
+            server.status = 'inactive';
             server.lastChecked = Date.now();
-            server.lastResponseTime = Math.round(responseTime);
+            server.lastResponseTime = null;
             resolve();
         };
 
