@@ -3,7 +3,7 @@
 // e.g. localStorage.setItem('probeApiBase', 'https://probe.yourdomain.com');
 // and optional API key: localStorage.setItem('probeApiKey', 'your-key');
 
-const DEFAULT_PROBE_API_BASE = ''; // e.g. 'https://probe.yourdomain.com' or '' to use relative path
+const DEFAULT_PROBE_API_BASE = 'http://localhost:3000'; // e.g. 'https://probe.yourdomain.com' or '' to use relative path
 const PROBE_API_BASE = (localStorage.getItem('probeApiBase') || DEFAULT_PROBE_API_BASE).replace(/\/$/, '');
 const PROBE_API_KEY = localStorage.getItem('probeApiKey') || null; // optional - set if your probe requires x-probe-key
 
