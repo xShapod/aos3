@@ -35,14 +35,6 @@
             <img src="https://i.ibb.co/MyNgy0pF/1760299817553.png" alt="ISP Media Hub Banner">
         </div>
         
-        <!-- Auto Refresh Status Bar -->
-        <div class="auto-refresh-bar" id="autoRefreshBar" style="display: none;">
-            <div class="refresh-status">
-                <i class="fas fa-sync-alt"></i>
-                <span id="autoRefreshStatus">Auto-refresh: Stopped</span>
-            </div>
-        </div>
-        
         <div class="control-bar">
             <div class="sort-options">
                 <button class="sort-btn active" data-sort="manual">
@@ -82,6 +74,16 @@
                     Others
                 </div>
             </div>
+        </div>
+
+        <!-- Check All Status Section -->
+        <div class="check-all-section">
+            <button class="btn btn-primary" id="checkAllBtn" onclick="checkAllServersStatus()">
+                <i class="fas fa-sync-alt"></i> Check All Server Status
+            </button>
+            <button class="btn btn-warning" id="quickCheckAllBtn" onclick="quickCheckAllStatus()">
+                <i class="fas fa-bolt"></i> Quick Check All
+            </button>
         </div>
         
         <div class="server-grid" id="serverGrid">
@@ -159,25 +161,6 @@
             
             <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
             
-            <!-- Auto Refresh Section -->
-            <div class="auto-refresh-section">
-                <h4><i class="fas fa-sync-alt"></i> Auto Refresh</h4>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="autoRefreshInterval">Check Interval (minutes)</label>
-                        <input type="number" class="form-control" id="autoRefreshInterval" min="1" max="60" value="5">
-                    </div>
-                    <button class="btn btn-success" id="autoRefreshToggle" onclick="toggleAutoRefresh()">
-                        <i class="fas fa-play"></i> Start Auto-Refresh
-                    </button>
-                </div>
-                <div class="refresh-status">
-                    Status: <span id="autoRefreshStatus">Stopped</span>
-                </div>
-            </div>
-            
-            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
-            
             <div class="export-import-section">
                 <h4><i class="fas fa-file-export"></i> Backup & Restore</h4>
                 <div class="form-row">
@@ -194,36 +177,10 @@
                     </button>
                 </div>
             </div>
-            
-            <!-- Bulk Actions Section -->
-            <div class="bulk-actions-section">
-                <h4><i class="fas fa-tasks"></i> Bulk Actions</h4>
-                <div class="form-row">
-                    <button class="btn btn-info" onclick="checkAllServersStatus()">
-                        <i class="fas fa-sync-alt"></i> Check All Status
-                    </button>
-                    <button class="btn btn-warning" onclick="quickCheckAllStatus()">
-                        <i class="fas fa-bolt"></i> Quick Check All
-                    </button>
-                </div>
-                <div class="form-row" style="margin-top: 0.5rem;">
-                    <button class="btn btn-success" onclick="bulkFavorite('favorite')">
-                        <i class="fas fa-star"></i> Favorite All
-                    </button>
-                    <button class="btn btn-secondary" onclick="bulkFavorite('unfavorite')">
-                        <i class="fas fa-star"></i> Unfavorite All
-                    </button>
-                </div>
-                <div class="form-row" style="margin-top: 0.5rem;">
-                    <button class="btn btn-danger" onclick="deleteAllServers()">
-                        <i class="fas fa-trash"></i> Delete All Servers
-                    </button>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Other modals remain the same as before -->
+    <!-- Export/Import Modal -->
     <div class="modal" id="exportImportModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -251,6 +208,7 @@
         </div>
     </div>
     
+    <!-- Import from URL Modal -->
     <div class="modal" id="importUrlModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -278,6 +236,7 @@
         </div>
     </div>
     
+    <!-- Edit Server Modal -->
     <div class="modal" id="editServerModal">
         <div class="modal-content">
             <div class="modal-header">
