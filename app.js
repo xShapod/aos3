@@ -1,3 +1,4 @@
+// Sample data for demonstration
 let servers = [
     {
         id: 1,
@@ -41,28 +42,21 @@ let currentSort = 'manual';
 let currentCategory = 'all';
 let currentEditServerId = null;
 
-// ==================== AUTO-REFRESH VARIABLES ====================
-let autoRefreshInterval = null;
-let autoRefreshEnabled = false;
-
 // Load servers from localStorage if available
 document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
-        // Clean up old fields and initialize new ones
         servers.forEach(server => {
             if (!server.categories) {
                 server.categories = [server.category || 'others'];
             }
-            // Remove lastVerified field and ensure description is a string
             if (server.lastVerified !== undefined) {
                 delete server.lastVerified;
             }
             if (!server.description) {
                 server.description = '';
             }
-            // Initialize new status checking fields
             if (!server.lastChecked) {
                 server.lastChecked = null;
             }
@@ -71,20 +65,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     } else {
-        // Save default servers if first time
         localStorage.setItem('ispServers', JSON.stringify(servers));
     }
     
     renderServers(currentCategory, currentSort);
     setupEventListeners();
-    initializeAutoRefresh();
 });
 
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
-// Enhanced Real server status checking with response time measurement
 async function checkServerStatus(server) {
-    // Show checking status immediately
     server.status = 'checking';
     server.lastChecked = Date.now();
     saveServers();
@@ -93,7 +83,6 @@ async function checkServerStatus(server) {
     const startTime = performance.now();
     
     try {
-        // Use a more robust approach for BDIX servers
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
@@ -109,14 +98,12 @@ async function checkServerStatus(server) {
         
         clearTimeout(timeoutId);
         
-        // Even with no-cors, if we reach here, the server responded
         const responseTime = performance.now() - startTime;
         server.status = 'active';
         server.lastChecked = Date.now();
         server.lastResponseTime = Math.round(responseTime);
         
     } catch (error) {
-        // Try alternative method - create image request
         await checkServerWithImage(server, startTime);
     } finally {
         saveServers();
@@ -124,8 +111,6 @@ async function checkServerStatus(server) {
     }
 }
 
-// FIXED: Enhanced alternative method using Image request with response time
-// Now properly detects 403/404 errors as OFFLINE
 function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -146,21 +131,18 @@ function checkServerWithImage(server, startTime) {
         };
 
         img.onerror = function() {
-            // FIXED: Server returned error (403 Forbidden, 404 Not Found, etc)
-            // Mark as INACTIVE/OFFLINE
             clearTimeout(timeout);
-            server.status = 'inactive';
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
             server.lastChecked = Date.now();
-            server.lastResponseTime = null;
+            server.lastResponseTime = Math.round(responseTime);
             resolve();
         };
 
-        // Try to load a common path or the root
         img.src = server.address + '/favicon.ico?t=' + Date.now();
     });
 }
 
-// Check status for a single server
 async function checkSingleServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
@@ -169,7 +151,6 @@ async function checkSingleServerStatus(serverId) {
     }
 }
 
-// Bulk status check for all servers
 async function checkAllServersStatus() {
     showToast('Checking status of all servers...');
     
@@ -177,7 +158,6 @@ async function checkAllServersStatus() {
         const server = servers[i];
         await checkServerStatus(server);
         
-        // Add delay between checks to avoid overwhelming
         if (i < servers.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -186,7 +166,6 @@ async function checkAllServersStatus() {
     showToast('All servers status updated!');
 }
 
-// Quick status check (only checks if server is reachable, faster)
 async function quickCheckServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
@@ -215,7 +194,6 @@ async function quickCheckServerStatus(serverId) {
     }
 }
 
-// Quick check all function
 async function quickCheckAllStatus() {
     showToast('Quick checking all servers...');
     
@@ -227,7 +205,6 @@ async function quickCheckAllStatus() {
     showToast('Quick status check completed!');
 }
 
-// Helper function for relative time display
 function formatRelativeTime(timestamp) {
     if (!timestamp) return 'Never';
     
@@ -245,7 +222,6 @@ function formatRelativeTime(timestamp) {
 
 // ==================== BULK OPERATIONS ====================
 
-// Delete all servers
 function deleteAllServers() {
     if (confirm('Are you sure you want to delete ALL servers? This cannot be undone!')) {
         servers = [];
@@ -256,25 +232,6 @@ function deleteAllServers() {
     }
 }
 
-// Delete servers by category
-function deleteServersByCategory(category) {
-    const categoryName = getCategoryDisplayName(category);
-    if (confirm(`Are you sure you want to delete all ${categoryName} servers? This cannot be undone!`)) {
-        servers = servers.filter(server => !server.categories.includes(category));
-        
-        // Recalculate ranks
-        servers.forEach((server, index) => {
-            server.rank = index + 1;
-        });
-        
-        saveServers();
-        renderServers(currentCategory, currentSort);
-        showToast(`All ${categoryName} servers deleted!`);
-        closeAllManagementModals();
-    }
-}
-
-// Bulk favorite/unfavorite
 function bulkFavorite(action) {
     let count = 0;
     servers.forEach(server => {
@@ -292,106 +249,8 @@ function bulkFavorite(action) {
     showToast(`${count} servers ${action === 'favorite' ? 'added to' : 'removed from'} favorites!`);
 }
 
-// Export servers by category
-function exportServersByCategory(category) {
-    let filteredServers = servers;
-    if (category !== 'all') {
-        filteredServers = servers.filter(server => server.categories.includes(category));
-    }
-    
-    const dataStr = JSON.stringify(filteredServers, null, 2);
-    const dataBlob = new Blob([dataStr], {type: 'application/json'});
-    
-    const categoryName = category === 'all' ? 'all' : getCategoryDisplayName(category).toLowerCase().replace(' ', '-');
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `isp-servers-${categoryName}-backup.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    
-    showToast(`${filteredServers.length} servers exported!`);
-}
-
-// ==================== AUTO-REFRESH STATUS ====================
-
-// Initialize auto-refresh from saved settings
-function initializeAutoRefresh() {
-    const savedAutoRefresh = localStorage.getItem('autoRefreshEnabled');
-    const savedInterval = localStorage.getItem('autoRefreshInterval');
-    
-    if (savedAutoRefresh === 'true') {
-        autoRefreshEnabled = true;
-        const interval = savedInterval ? parseInt(savedInterval) : 5;
-        startAutoRefresh(interval);
-        updateAutoRefreshUI(true, interval);
-    }
-}
-
-// Start auto-refresh
-function startAutoRefresh(intervalMinutes = 5) {
-    if (autoRefreshInterval) clearInterval(autoRefreshInterval);
-    
-    autoRefreshInterval = setInterval(() => {
-        showToast(`Auto-refresh: Checking all servers...`, 'info');
-        quickCheckAllStatus();
-    }, intervalMinutes * 60 * 1000);
-    
-    autoRefreshEnabled = true;
-    localStorage.setItem('autoRefreshEnabled', 'true');
-    localStorage.setItem('autoRefreshInterval', intervalMinutes.toString());
-    
-    showToast(`Auto-refresh started (every ${intervalMinutes} minutes)`);
-    updateAutoRefreshUI(true, intervalMinutes);
-}
-
-// Stop auto-refresh
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
-    }
-    
-    autoRefreshEnabled = false;
-    localStorage.setItem('autoRefreshEnabled', 'false');
-    updateAutoRefreshUI(false, 0);
-    showToast('Auto-refresh stopped');
-}
-
-// Toggle auto-refresh
-function toggleAutoRefresh() {
-    if (autoRefreshEnabled) {
-        stopAutoRefresh();
-    } else {
-        const interval = parseInt(document.getElementById('autoRefreshInterval').value) || 5;
-        startAutoRefresh(interval);
-    }
-}
-
-// Update auto-refresh UI
-function updateAutoRefreshUI(enabled, interval) {
-    const toggleBtn = document.getElementById('autoRefreshToggle');
-    const statusSpan = document.getElementById('autoRefreshStatus');
-    const refreshBar = document.getElementById('autoRefreshBar');
-    
-    if (toggleBtn && statusSpan) {
-        toggleBtn.innerHTML = enabled ? 
-            '<i class="fas fa-stop"></i> Stop Auto-Refresh' : 
-            '<i class="fas fa-play"></i> Start Auto-Refresh';
-        toggleBtn.className = enabled ? 'btn btn-warning' : 'btn btn-success';
-        statusSpan.textContent = enabled ? `Running (every ${interval} minutes)` : 'Stopped';
-    }
-    
-    if (refreshBar) {
-        refreshBar.style.display = enabled ? 'block' : 'none';
-    }
-}
-
 // ==================== PROFESSIONAL TABLE RENDER FUNCTION ====================
 
-// Render servers based on category and sort - PROFESSIONAL DESIGN
 function renderServers(category, sortBy) {
     const serverGrid = document.getElementById('serverGrid');
     serverGrid.innerHTML = '';
@@ -406,7 +265,6 @@ function renderServers(category, sortBy) {
         }
     }
     
-    // Apply search filter if any
     const searchTerm = document.getElementById('searchInput').value.toLowerCase();
     if (searchTerm) {
         filteredServers = filteredServers.filter(server => 
@@ -415,7 +273,6 @@ function renderServers(category, sortBy) {
         );
     }
     
-    // Sort servers
     filteredServers = sortServers(filteredServers, sortBy);
     
     if (filteredServers.length === 0) {
@@ -429,7 +286,6 @@ function renderServers(category, sortBy) {
         return;
     }
 
-    // Create professional table structure
     const tableContainer = document.createElement('div');
     tableContainer.className = 'server-table-container';
     
@@ -511,7 +367,6 @@ function renderServers(category, sortBy) {
     });
 }
 
-// Get display name for category
 function getCategoryDisplayName(category) {
     const categories = {
         'live': 'Live TV',
@@ -522,7 +377,6 @@ function getCategoryDisplayName(category) {
     return categories[category] || category;
 }
 
-// Sort servers based on criteria
 function sortServers(servers, sortBy) {
     const sortedServers = [...servers];
     
@@ -538,7 +392,6 @@ function sortServers(servers, sortBy) {
     }
 }
 
-// Toggle favorite
 function toggleFavorite(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
@@ -549,20 +402,17 @@ function toggleFavorite(serverId) {
     }
 }
 
-// Enhanced Open edit modal
 function openEditModal(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
         currentEditServerId = serverId;
         
-        // Populate all fields
         document.getElementById('editServerName').value = server.name;
         document.getElementById('editServerAddress').value = server.address;
         document.getElementById('editStatus').value = server.status;
         document.getElementById('editType').value = server.type;
         document.getElementById('editDescription').value = server.description || '';
         
-        // Populate categories checkboxes
         const categoryCheckboxes = document.querySelectorAll('#editModalBody input[name="editCategories"]');
         categoryCheckboxes.forEach(checkbox => {
             checkbox.checked = server.categories && server.categories.includes(checkbox.value);
@@ -572,59 +422,43 @@ function openEditModal(serverId) {
     }
 }
 
-// Close edit modal
 function closeEditModal() {
     document.getElementById('editServerModal').style.display = 'none';
     currentEditServerId = null;
 }
 
-// HELPER: Normalizes server address by removing protocol and trailing slash
 function normalizeAddress(address) {
     if (!address) return '';
     let normalized = address.toLowerCase().trim();
-    
-    // Remove protocol (http://, https://, ftp://)
     normalized = normalized.replace(/^(https?|ftp):\/\//i, '');
-    
-    // Remove trailing slash
     normalized = normalized.replace(/\/$/, '');
-    
     return normalized;
 }
 
-// FIX: Uses String() comparison for IDs to ensure edited server is excluded
 function isAddressDuplicateInAnyCategory(address, categories, currentId = null) {
     const normalizedNewAddress = normalizeAddress(address);
     if (!normalizedNewAddress) return false;
 
-    // Convert the ID being edited to a string for safe comparison
     const currentIdStr = currentId ? String(currentId) : null;
 
     return servers.some(existingServer => {
-        // 1. Ignore the server being edited
-        // CRITICAL FIX: Ensure both IDs are compared as strings to avoid type-coercion bugs
         if (currentIdStr && String(existingServer.id) === currentIdStr) {
             return false;
         }
         
-        // 2. Address must match after normalization
         const normalizedExistingAddress = normalizeAddress(existingServer.address);
         if (normalizedExistingAddress !== normalizedNewAddress) {
             return false;
         }
 
-        // 3. Must have at least one common category
-        // Find if any category of the existing server is included in the new/edited server's categories
         return existingServer.categories.some(cat => categories.includes(cat));
     });
 }
 
-// Enhanced Save edit changes
 function saveEditChanges() {
     if (currentEditServerId) {
         const server = servers.find(s => s.id === currentEditServerId);
         if (server) {
-            // Get selected categories first for duplicate check
             const selectedCategories = [];
             document.querySelectorAll('#editModalBody input[name="editCategories"]:checked').forEach(checkbox => {
                 selectedCategories.push(checkbox.value);
@@ -633,21 +467,16 @@ function saveEditChanges() {
 
             const newAddress = document.getElementById('editServerAddress').value;
 
-            // START CRITICAL FIX: Only perform duplicate check if unique identifiers change
             const originalNormalizedAddress = normalizeAddress(server.address);
             const newNormalizedAddress = normalizeAddress(newAddress);
             
-            // Compare categories by sorting and joining them into a string for reliable comparison
-            // Defensive check for Array.isArray added for robustness
             const originalCategoriesStr = (Array.isArray(server.categories) ? server.categories : []).sort().join(',');
             const newCategoriesStr = newCategories.sort().join(',');
             
-            // Check if the unique identifiers (Address or Categories) have actually changed
             const uniqueIdentifiersChanged = (originalNormalizedAddress !== newNormalizedAddress) || (originalCategoriesStr !== newCategoriesStr);
             
             let isDuplicate = false;
             if (uniqueIdentifiersChanged) {
-                // DUPLICATE CHECK: Only run the check if the address or categories are being modified.
                 if (isAddressDuplicateInAnyCategory(newAddress, newCategories, currentEditServerId)) {
                     isDuplicate = true;
                 }
@@ -657,9 +486,7 @@ function saveEditChanges() {
                 showToast('Error: Duplicate server address found in a matching category!', 'error');
                 return;
             }
-            // END CRITICAL FIX
 
-            // If not duplicate (or check was skipped), save changes
             server.name = document.getElementById('editServerName').value;
             server.address = newAddress;
             server.status = document.getElementById('editStatus').value;
@@ -675,22 +502,16 @@ function saveEditChanges() {
     }
 }
 
-// NEW HELPER FUNCTION: Close all management-related modals
 function closeAllManagementModals() {
-    // 1. Close Export/Import Modal
     document.getElementById('exportImportModal').style.display = 'none';
-    // 2. Close Import from URL Modal
     document.getElementById('importUrlModal').style.display = 'none';
-    // 3. Close Manage Servers Modal (The parent container modal)
     document.getElementById('manageServersModal').style.display = 'none';
 }
 
-// Close Export/Import Modal (Manual close only)
 function closeModal() {
     document.getElementById('exportImportModal').style.display = 'none';
 }
 
-// Copy export data to clipboard
 function copyExportData() {
     const exportData = document.getElementById('exportData');
     exportData.select();
@@ -699,7 +520,6 @@ function copyExportData() {
     closeAllManagementModals();
 }
 
-// Download backup file
 function downloadBackup() {
     const dataStr = JSON.stringify(servers, null, 2);
     const dataBlob = new Blob([dataStr], {type: 'application/json'});
@@ -717,12 +537,10 @@ function downloadBackup() {
     closeAllManagementModals();
 }
 
-// Trigger file upload
 function triggerUpload() {
     document.getElementById('fileUpload').click();
 }
 
-// Handle file upload
 function handleFileUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -733,7 +551,6 @@ function handleFileUpload(event) {
             const rawImportedServers = JSON.parse(e.target.result);
             if (Array.isArray(rawImportedServers)) {
 
-                // Prepare imported servers (Assign new unique IDs and ensure default fields)
                 let importedServers = rawImportedServers.map(server => ({
                     id: Date.now() + Math.random(), 
                     name: server.name || 'Untitled Server',
@@ -758,7 +575,6 @@ function handleFileUpload(event) {
                     showToast('Servers restored from backup!');
                     closeAllManagementModals(); 
                 } else {
-                    // MERGE Logic with DUPLICATE CHECKING
                     const finalServers = [...servers];
                     let duplicatesSkipped = 0;
 
@@ -784,12 +600,9 @@ function handleFileUpload(event) {
         }
     };
     reader.readAsText(file);
-    
-    // Reset file input
     event.target.value = '';
 }
 
-// Replace all servers with imported data
 function replaceServers() {
     const exportData = document.getElementById('exportData');
     try {
@@ -808,14 +621,12 @@ function replaceServers() {
     }
 }
 
-// Merge imported data with existing servers
 function mergeServers() {
     const exportData = document.getElementById('exportData');
     try {
         const rawImportedServers = JSON.parse(exportData.value);
         if (Array.isArray(rawImportedServers)) {
             
-            // Prepare imported servers (Assign new unique IDs and ensure default fields)
             let importedServers = rawImportedServers.map(server => ({
                 id: Date.now() + Math.random(), 
                 name: server.name || 'Untitled Server',
@@ -832,7 +643,6 @@ function mergeServers() {
             }));
             importedServers = importedServers.filter(s => s.address);
 
-            // MERGE Logic with DUPLICATE CHECKING
             const finalServers = [...servers];
             let duplicatesSkipped = 0;
 
@@ -857,9 +667,6 @@ function mergeServers() {
     }
 }
 
-/**
- * Parses the raw text content of a .txt file into an array of server objects.
- */
 function parseTxtServers(text) {
     const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     const newServers = [];
@@ -889,7 +696,6 @@ function parseTxtServers(text) {
     return newServers;
 }
 
-// Import from URL function
 async function importFromURL() {
     const url = document.getElementById('importUrl').value;
     const method = document.querySelector('input[name="importMethod"]:checked').value;
@@ -927,7 +733,6 @@ async function importFromURL() {
         }
 
         
-        // Prepare imported servers (Assign new unique IDs and ensure default fields)
         importedServers = importedServers.map(server => ({
             id: Date.now() + Math.random(), 
             name: server.name || 'Untitled Server',
@@ -943,7 +748,6 @@ async function importFromURL() {
             lastResponseTime: server.lastResponseTime || null
         }));
         
-        // Filter out any entries that might be empty or invalid after preparation
         importedServers = importedServers.filter(s => s.address);
 
 
@@ -951,7 +755,6 @@ async function importFromURL() {
             servers = importedServers;
             showToast(`All servers replaced from URL! Loaded ${servers.length} entries.`);
         } else {
-            // MERGE Logic with DUPLICATE CHECKING
             const finalServers = [...servers];
             let duplicatesSkipped = 0;
 
@@ -977,7 +780,6 @@ async function importFromURL() {
     }
 }
 
-// Show export modal
 function showExportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -994,7 +796,6 @@ function showExportModal() {
     modal.style.display = 'flex';
 }
 
-// Show import modal
 function showImportModal() {
     const modal = document.getElementById('exportImportModal');
     const modalTitle = document.getElementById('modalTitle');
@@ -1010,13 +811,11 @@ function showImportModal() {
     copyBtn.style.display = 'none';
     modal.style.display = 'flex';
     
-    // Focus on the textarea immediately
     setTimeout(() => {
         exportData.focus();
     }, 100);
 }
 
-// Set up event listeners
 function setupEventListeners() {
     // Category tabs
     document.querySelectorAll('.tab').forEach(tab => {
@@ -1090,9 +889,6 @@ function setupEventListeners() {
     document.getElementById('closeEditModal').addEventListener('click', closeEditModal);
     document.getElementById('saveEdit').addEventListener('click', saveEditChanges);
     
-    // Auto-refresh toggle
-    document.getElementById('autoRefreshToggle').addEventListener('click', toggleAutoRefresh);
-    
     // Close modals when clicking outside
     document.getElementById('exportImportModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
@@ -1111,23 +907,19 @@ function setupEventListeners() {
     });
 }
 
-// Enhanced Add a new server with multiple categories
 function addServer() {
     const name = document.getElementById('serverName').value;
     const address = document.getElementById('serverAddress').value;
     const type = document.getElementById('serverType').value;
     const description = document.getElementById('serverDescription').value;
     
-    // Get selected categories
     const selectedCategories = [];
     document.querySelectorAll('#serverForm input[name="serverCategories"]:checked').forEach(checkbox => {
         selectedCategories.push(checkbox.value);
     });
     
-    // Ensure at least one category is selected, or default to 'others'
     const categories = selectedCategories.length > 0 ? selectedCategories : ['others'];
 
-    // DUPLICATE CHECK
     if (isAddressDuplicateInAnyCategory(address, categories)) {
         showToast('Error: Duplicate server address found in a matching category!', 'error');
         return;
@@ -1152,23 +944,17 @@ function addServer() {
     saveServers();
     renderServers(currentCategory, currentSort);
     
-    // Reset form
     document.getElementById('serverForm').reset();
-    
-    // Close all modals after action
     closeAllManagementModals();
 
-    // Show confirmation toast
     showToast(`Server "${name}" added successfully!`);
 }
 
-// Delete a server
 function deleteServer(id) {
     if (confirm('Are you sure you want to delete this server?')) {
         const serverName = servers.find(server => server.id === id).name;
         servers = servers.filter(server => server.id !== id);
         
-        // Recalculate ranks
         servers.forEach((server, index) => {
             server.rank = index + 1;
         });
@@ -1180,24 +966,19 @@ function deleteServer(id) {
     }
 }
 
-// Connect to server - ACTUALLY OPENS THE URL
 function connectToServer(address) {
     showToast(`Opening: ${address}`);
     
-    // Actually open the URL in a new tab
     try {
         window.open(address, '_blank');
     } catch (e) {
-        // Fallback if window.open is blocked
         showToast(`Could not open automatically. Please copy and paste: ${address}`);
-        // Copy to clipboard as fallback
         navigator.clipboard.writeText(address).then(() => {
             showToast(`URL copied to clipboard: ${address}`);
         });
     }
 }
 
-// Show toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -1210,7 +991,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// Save servers to localStorage
 function saveServers() {
     localStorage.setItem('ispServers', JSON.stringify(servers));
 }
