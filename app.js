@@ -1,4 +1,3 @@
-// Sample data for demonstration (MODIFIED: Descriptions and verification fields removed)
 let servers = [
     {
         id: 1,
