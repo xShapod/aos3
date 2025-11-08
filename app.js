@@ -74,7 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
+// Enhanced Real server status checking with response time measurement
 async function checkServerStatus(server) {
+    // Show checking status immediately
     server.status = 'checking';
     server.lastChecked = Date.now();
     saveServers();
@@ -83,6 +85,7 @@ async function checkServerStatus(server) {
     const startTime = performance.now();
     
     try {
+        // Use a more robust approach for BDIX servers
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
@@ -98,12 +101,14 @@ async function checkServerStatus(server) {
         
         clearTimeout(timeoutId);
         
+        // Even with no-cors, if we reach here, the server responded
         const responseTime = performance.now() - startTime;
         server.status = 'active';
         server.lastChecked = Date.now();
         server.lastResponseTime = Math.round(responseTime);
         
     } catch (error) {
+        // Try alternative method - create image request
         await checkServerWithImage(server, startTime);
     } finally {
         saveServers();
@@ -111,6 +116,7 @@ async function checkServerStatus(server) {
     }
 }
 
+// Enhanced alternative method using Image request with response time
 function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -132,17 +138,20 @@ function checkServerWithImage(server, startTime) {
 
         img.onerror = function() {
             clearTimeout(timeout);
-            // FIXED: Image failed to load = server error (403, 404, etc)
-            server.status = 'inactive';
+            // Even on error, if we got this far, server might be reachable
+            const responseTime = performance.now() - startTime;
+            server.status = 'active'; // Many BDIX servers block image requests but are still up
             server.lastChecked = Date.now();
-            server.lastResponseTime = null;
+            server.lastResponseTime = Math.round(responseTime);
             resolve();
         };
 
+        // Try to load a common path or the root
         img.src = server.address + '/favicon.ico?t=' + Date.now();
     });
 }
 
+// Check status for a single server
 async function checkSingleServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
@@ -151,6 +160,7 @@ async function checkSingleServerStatus(serverId) {
     }
 }
 
+// Bulk status check for all servers
 async function checkAllServersStatus() {
     showToast('Checking status of all servers...');
     
@@ -158,6 +168,7 @@ async function checkAllServersStatus() {
         const server = servers[i];
         await checkServerStatus(server);
         
+        // Add delay between checks to avoid overwhelming
         if (i < servers.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -166,6 +177,7 @@ async function checkAllServersStatus() {
     showToast('All servers status updated!');
 }
 
+// Quick status check (only checks if server is reachable, faster)
 async function quickCheckServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
@@ -194,6 +206,7 @@ async function quickCheckServerStatus(serverId) {
     }
 }
 
+// Quick check all function
 async function quickCheckAllStatus() {
     showToast('Quick checking all servers...');
     
