@@ -72,14 +72,9 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
-// ==================== ACCURATE BDIX SERVER STATUS CHECKING (FIXED) ====================
-// This properly detects if a BDIX server is actually accessible
-// Only marks online if server responds with success (not 403/404/etc)
+// ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
+// MINIMAL FIX: Only changed checkServerWithImage() to detect 403/404 errors
 
-/**
- * Check server status by attempting to actually load content from it
- * Uses multiple methods to ensure accuracy for BDIX servers
- */
 async function checkServerStatus(server) {
     server.status = 'checking';
     server.lastChecked = Date.now();
@@ -87,16 +82,14 @@ async function checkServerStatus(server) {
     renderServers(currentCategory, currentSort);
 
     const startTime = performance.now();
-    let isAccessible = false;
     
     try {
-        // Method 1: Try loading with CORS enabled (will show real errors)
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
         
         const response = await fetch(server.address, {
             method: 'GET',
-            mode: 'cors',  // Changed from 'no-cors' to allow error detection
+            mode: 'no-cors',
             cache: 'no-cache',
             signal: controller.signal,
             headers: {
@@ -105,77 +98,55 @@ async function checkServerStatus(server) {
         });
         
         clearTimeout(timeoutId);
+        
         const responseTime = performance.now() - startTime;
-        
-        // Check if response was successful (200-299 status codes)
-        if (response.ok || response.status === 200) {
-            isAccessible = true;
-            server.lastResponseTime = Math.round(responseTime);
-        } else {
-            // Server returned error: 403, 404, 5xx, etc
-            isAccessible = false;
-            server.lastResponseTime = null;
-        }
-        
-    } catch (corsError) {
-        // CORS error might occur, try alternative method
-        isAccessible = await checkServerWithImageLoad(server, startTime);
-    } finally {
-        server.status = isAccessible ? 'active' : 'inactive';
+        server.status = 'active';
         server.lastChecked = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
+        
+    } catch (error) {
+        // Try alternative method to check for 403/404 errors
+        await checkServerWithImage(server, startTime);
+    } finally {
         saveServers();
         renderServers(currentCategory, currentSort);
     }
 }
 
-/**
- * Alternative method: Try loading an image from the server
- * If image loads successfully, server is accessible
- * If image fails or times out, server is not accessible
- */
-function checkServerWithImageLoad(server, startTime) {
+// MODIFIED: This now properly detects 403/404 errors
+function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
-        let timeout;
-        let resolved = false;
-
-        const markResult = (accessible, responseTime) => {
-            if (!resolved) {
-                resolved = true;
-                if (timeout) clearTimeout(timeout);
-                if (accessible) {
-                    server.lastResponseTime = Math.round(responseTime);
-                } else {
-                    server.lastResponseTime = null;
-                }
-                resolve(accessible);
-            }
-        };
-
-        // 8 second timeout
-        timeout = setTimeout(() => {
-            markResult(false, performance.now() - startTime);
+        const timeout = setTimeout(() => {
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
+            resolve();
         }, 8000);
 
         img.onload = function() {
+            clearTimeout(timeout);
             const responseTime = performance.now() - startTime;
-            markResult(true, responseTime);
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
         };
 
+        // FIXED: img.onerror now marks server as OFFLINE (403/404 errors)
         img.onerror = function() {
-            // Image failed to load = server not accessible
-            const responseTime = performance.now() - startTime;
-            markResult(false, responseTime);
+            clearTimeout(timeout);
+            // Server returned error (403 Forbidden, 404 Not Found, etc)
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
+            resolve();
         };
 
-        // Try to load favicon - if it fails, server is down or blocking
         img.src = server.address + '/favicon.ico?t=' + Date.now();
     });
 }
 
-/**
- * Check status for a single server (from individual card button)
- */
 async function checkSingleServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (server) {
@@ -184,10 +155,6 @@ async function checkSingleServerStatus(serverId) {
     }
 }
 
-/**
- * Bulk status check for all servers
- * Checks each server one by one with 1 second delay
- */
 async function checkAllServersStatus() {
     showToast('Checking status of all servers...');
     
@@ -195,7 +162,6 @@ async function checkAllServersStatus() {
         const server = servers[i];
         await checkServerStatus(server);
         
-        // Wait 1 second between checks to avoid overwhelming network
         if (i < servers.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -204,10 +170,6 @@ async function checkAllServersStatus() {
     showToast('All servers status updated!');
 }
 
-/**
- * Quick status check (faster version)
- * Uses stricter timeout (3 seconds instead of 8)
- */
 async function quickCheckServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
     if (!server) return;
@@ -215,66 +177,35 @@ async function quickCheckServerStatus(serverId) {
     server.status = 'checking';
     renderServers(currentCategory, currentSort);
 
-    const startTime = performance.now();
-    let isAccessible = false;
-
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // Shorter timeout
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-        const response = await fetch(server.address, {
-            method: 'HEAD', // Faster than GET
-            mode: 'cors',
+        await fetch(server.address, {
+            method: 'HEAD',
+            mode: 'no-cors',
             signal: controller.signal
         });
 
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - startTime;
-
-        // Only mark as active if response was successful
-        if (response.ok || response.status === 200) {
-            isAccessible = true;
-            server.lastResponseTime = Math.round(responseTime);
-        } else {
-            isAccessible = false;
-            server.lastResponseTime = null;
-        }
-
+        server.status = 'active';
     } catch (error) {
-        // Timeout, network error, or fetch failed
-        isAccessible = false;
-        server.lastResponseTime = null;
+        server.status = 'inactive';
     } finally {
-        server.status = isAccessible ? 'active' : 'inactive';
         server.lastChecked = Date.now();
         saveServers();
         renderServers(currentCategory, currentSort);
     }
 }
 
-/**
- * Quick check all servers (parallel execution, faster)
- */
 async function quickCheckAllStatus() {
     showToast('Quick checking all servers...');
     
-    // Run checks in parallel batches of 5
-    const promises = [];
-    for (let i = 0; i < servers.length; i++) {
-        promises.push(quickCheckServerStatus(servers[i].id));
-        
-        // Limit concurrent requests to 5
-        if (promises.length >= 5) {
-            await Promise.all(promises);
-            promises.length = 0;
-        }
-    }
+    const promises = servers.map(async (server) => {
+        await quickCheckServerStatus(server.id);
+    });
     
-    // Wait for remaining promises
-    if (promises.length > 0) {
-        await Promise.all(promises);
-    }
-    
+    await Promise.all(promises);
     showToast('Quick status check completed!');
 }
 
