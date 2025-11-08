@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedServers = localStorage.getItem('ispServers');
     if (savedServers) {
         servers = JSON.parse(savedServers);
-        // Ensure all servers have a 'categories' array for filtering robustness
         servers.forEach(server => {
             if (!server.categories) {
                 server.categories = [server.category || 'others'];
@@ -50,7 +49,6 @@ function updateRanksAfterDrag() {
         }
     });
     
-    // Update the displayed rank numbers
     updateRankNumbers();
 }
 
@@ -73,12 +71,9 @@ function renderServerList(category) {
     let filteredServers = servers;
     
     if (category !== 'all') {
-        // Filter by checking if the server's categories array includes the selected category
-        // Ensure server.categories is treated as an array
         filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(category));
     }
     
-    // Sort by current rank
     filteredServers.sort((a, b) => a.rank - b.rank);
     
     if (filteredServers.length === 0) {
@@ -97,7 +92,6 @@ function renderServerList(category) {
         listItem.className = 'server-list-item';
         listItem.setAttribute('data-id', server.id);
         
-        // Safely display the first category from the categories array
         const primaryCategory = server.categories && server.categories.length > 0 ? server.categories[0] : 'others';
 
         listItem.innerHTML = `
@@ -136,13 +130,11 @@ function getCategoryDisplayName(category) {
     return categories[category] || category;
 }
 
-// Move server up in the current filtered list (manual rank order only)
+// Move server up in the current filtered list
 function moveServerUp(id) {
-    // We only modify the global 'servers' array, so we need to find the full server object.
     const currentServer = servers.find(server => server.id === id);
     if (!currentServer) return;
 
-    // Filter and sort the servers based on the current category and rank order to find the neighbor
     let filteredServers = servers;
     if (currentCategory !== 'all') {
         filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
@@ -150,27 +142,24 @@ function moveServerUp(id) {
     filteredServers.sort((a, b) => a.rank - b.rank);
     
     const filteredIndex = filteredServers.findIndex(server => server.id === id);
-    if (filteredIndex === 0 || filteredIndex === -1) return; // Cannot move up
+    if (filteredIndex === 0 || filteredIndex === -1) return;
     
     const aboveServer = filteredServers[filteredIndex - 1];
 
-    // Swap ranks between the two servers in the *global* list
     const tempRank = currentServer.rank;
     currentServer.rank = aboveServer.rank;
     aboveServer.rank = tempRank;
     
-    // Note: The move is only in rank, not array position. The next render will reflect the change.
     saveServers();
     renderServerList(currentCategory);
     showToast('Server moved up!');
 }
 
-// Move server down in the current filtered list (manual rank order only)
+// Move server down in the current filtered list
 function moveServerDown(id) {
     const currentServer = servers.find(server => server.id === id);
     if (!currentServer) return;
     
-    // Filter and sort the servers based on the current category and rank order to find the neighbor
     let filteredServers = servers;
     if (currentCategory !== 'all') {
         filteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
@@ -178,16 +167,14 @@ function moveServerDown(id) {
     filteredServers.sort((a, b) => a.rank - b.rank);
     
     const filteredIndex = filteredServers.findIndex(server => server.id === id);
-    if (filteredIndex === filteredServers.length - 1 || filteredIndex === -1) return; // Cannot move down
+    if (filteredIndex === filteredServers.length - 1 || filteredIndex === -1) return;
     
     const belowServer = filteredServers[filteredIndex + 1];
 
-    // Swap ranks between the two servers in the *global* list
     const tempRank = currentServer.rank;
     currentServer.rank = belowServer.rank;
     belowServer.rank = tempRank;
     
-    // Note: The move is only in rank, not array position. The next render will reflect the change.
     saveServers();
     renderServerList(currentCategory);
     showToast('Server moved down!');
@@ -195,20 +182,16 @@ function moveServerDown(id) {
 
 // Save the new order
 function saveNewOrder() {
-    // Reassign ranks based on current order to ensure they're sequential
-    // This is important after drag/drop or repeated moves to clean up the ranks
     let currentFilteredServers = servers;
     if (currentCategory !== 'all') {
         currentFilteredServers = servers.filter(server => server.categories && Array.isArray(server.categories) && server.categories.includes(currentCategory));
     }
     currentFilteredServers.sort((a, b) => a.rank - b.rank);
     
-    // Reassign sequential ranks only to the filtered list
     currentFilteredServers.forEach((server, index) => {
         server.rank = index + 1;
     });
 
-    // Re-save the entire list to ensure consistency
     saveServers();
     showToast('Server order saved successfully!');
 }
@@ -216,10 +199,8 @@ function saveNewOrder() {
 // Reset to default order (by name)
 function resetToDefaultOrder() {
     if (confirm('Are you sure you want to reset the order to alphabetical for all servers?')) {
-        // Sort the entire list by name alphabetically
         servers.sort((a, b) => a.name.localeCompare(b.name));
         
-        // Update ranks based on new order
         servers.forEach((server, index) => {
             server.rank = index + 1;
         });
@@ -230,7 +211,160 @@ function resetToDefaultOrder() {
     }
 }
 
-// Set up event listeners for settings page
+// ==================== BULK OPERATIONS (FROM app.js) ====================
+
+// Delete all servers
+function deleteAllServers() {
+    if (confirm('Are you sure you want to delete ALL servers? This cannot be undone!')) {
+        servers = [];
+        saveServers();
+        renderServerList(currentCategory);
+        showToast('All servers deleted!');
+    }
+}
+
+// Bulk favorite/unfavorite
+function bulkFavorite(action) {
+    let count = 0;
+    servers.forEach(server => {
+        if (action === 'favorite' && !server.isFavorite) {
+            server.isFavorite = true;
+            count++;
+        } else if (action === 'unfavorite' && server.isFavorite) {
+            server.isFavorite = false;
+            count++;
+        }
+    });
+    
+    saveServers();
+    renderServerList(currentCategory);
+    showToast(`${count} servers ${action === 'favorite' ? 'added to' : 'removed from'} favorites!`);
+}
+
+// Check all servers status (imported from app.js)
+async function checkAllServersStatus() {
+    showToast('Checking status of all servers...');
+    
+    for (let i = 0; i < servers.length; i++) {
+        const server = servers[i];
+        await checkServerStatus(server);
+        
+        if (i < servers.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }
+    
+    showToast('All servers status updated!');
+}
+
+// Quick check all servers (imported from app.js)
+async function quickCheckAllStatus() {
+    showToast('Quick checking all servers...');
+    
+    const promises = servers.map(async (server) => {
+        await quickCheckServerStatus(server.id);
+    });
+    
+    await Promise.all(promises);
+    showToast('Quick status check completed!');
+}
+
+// Server status checking functions (imported from app.js)
+async function checkServerStatus(server) {
+    server.status = 'checking';
+    server.lastChecked = Date.now();
+    saveServers();
+
+    const startTime = performance.now();
+    
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        
+        const response = await fetch(server.address, {
+            method: 'GET',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+        
+        clearTimeout(timeoutId);
+        
+        const responseTime = performance.now() - startTime;
+        server.status = 'active';
+        server.lastChecked = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
+        
+    } catch (error) {
+        await checkServerWithImage(server, startTime);
+    } finally {
+        saveServers();
+    }
+}
+
+function checkServerWithImage(server, startTime) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const timeout = setTimeout(() => {
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
+            resolve();
+        }, 8000);
+
+        img.onload = function() {
+            clearTimeout(timeout);
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
+        };
+
+        img.onerror = function() {
+            clearTimeout(timeout);
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
+            resolve();
+        };
+
+        img.src = server.address + '/favicon.ico?t=' + Date.now();
+    });
+}
+
+async function quickCheckServerStatus(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return;
+
+    server.status = 'checking';
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        await fetch(server.address, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        server.status = 'active';
+    } catch (error) {
+        server.status = 'inactive';
+    } finally {
+        server.lastChecked = Date.now();
+        saveServers();
+    }
+}
+
+// ==================== EVENT LISTENERS ====================
+
 function setupEventListeners() {
     // Back button
     document.getElementById('backBtn').addEventListener('click', function() {
@@ -258,9 +392,7 @@ function setupEventListeners() {
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
-    // MODIFIED: Check for 'warning' and set background accordingly
     toast.style.background = type === 'error' ? 'var(--danger)' : (type === 'warning' ? 'var(--warning)' : 'var(--success)');
-    // MODIFIED: Set text color for better contrast on warnings
     toast.style.color = type === 'warning' ? 'var(--dark)' : 'white';
     toast.classList.add('show');
     
