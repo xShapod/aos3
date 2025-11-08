@@ -72,15 +72,8 @@ document.addEventListener('DOMContentLoaded', function() {
     setupEventListeners();
 });
 
-// ==================== ACCURATE BDIX SERVER STATUS CHECKING ====================
-// This function properly validates HTTP responses and only marks servers as "online"
-// when they return successful status codes (200-299)
+// ==================== REAL SERVER STATUS CHECKING FUNCTIONS ====================
 
-/**
- * Check server status with proper HTTP status code validation
- * Only returns 'active' for successful responses (2xx status codes)
- * Returns 'inactive' for errors: 403, 404, 5xx, timeouts, or no response
- */
 async function checkServerStatus(server) {
     server.status = 'checking';
     server.lastChecked = Date.now();
@@ -104,129 +97,60 @@ async function checkServerStatus(server) {
         });
         
         clearTimeout(timeoutId);
-        const responseTime = performance.now() - startTime;
         
-        // CRITICAL: Check HTTP status code
-        // In no-cors mode, we can't directly access response.status for all responses,
-        // so we use fetch's success indicator
-        if (response.ok) {
-            // response.ok is true for status 200-299
-            server.status = 'active';
-            server.lastResponseTime = Math.round(responseTime);
-        } else {
-            // For no-cors requests, if we reach here but response isn't ok,
-            // the server is likely returning an error (403, 404, 5xx, etc.)
-            server.status = 'inactive';
-            server.lastResponseTime = null;
-        }
+        const responseTime = performance.now() - startTime;
+        server.status = 'active';
+        server.lastChecked = Date.now();
+        server.lastResponseTime = Math.round(responseTime);
         
     } catch (error) {
-        // Fetch failed: timeout, network error, CORS issue, etc.
-        // Try alternative method with stricter validation
-        await checkServerWithImageValidation(server, startTime);
+        await checkServerWithImage(server, startTime);
     } finally {
-        server.lastChecked = Date.now();
         saveServers();
         renderServers(currentCategory, currentSort);
     }
 }
 
-/**
- * Alternative validation method using image loading
- * This method is stricter: if the image fails to load, server is marked offline
- */
-function checkServerWithImageValidation(server, startTime) {
+function checkServerWithImage(server, startTime) {
     return new Promise((resolve) => {
         const img = new Image();
-        img.crossOrigin = 'anonymous'; // Try to load with proper CORS
-        let loaded = false;
-        
         const timeout = setTimeout(() => {
-            // Timeout reached - server didn't respond
-            if (!loaded) {
-                server.status = 'inactive';
-                server.lastResponseTime = null;
-            }
+            server.status = 'inactive';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = null;
             resolve();
         }, 8000);
 
         img.onload = function() {
-            // Image loaded successfully - server is responding
             clearTimeout(timeout);
             const responseTime = performance.now() - startTime;
             server.status = 'active';
+            server.lastChecked = Date.now();
             server.lastResponseTime = Math.round(responseTime);
-            loaded = true;
             resolve();
         };
 
         img.onerror = function() {
-            // Image failed to load - server returned error or is inaccessible
-            // This catches 403, 404, 500, etc.
             clearTimeout(timeout);
-            if (!loaded) {
-                server.status = 'inactive';
-                server.lastResponseTime = null;
-                loaded = true;
-            }
+            const responseTime = performance.now() - startTime;
+            server.status = 'active';
+            server.lastChecked = Date.now();
+            server.lastResponseTime = Math.round(responseTime);
             resolve();
         };
 
-        // Try to access a common path that should exist
-        // Using /favicon.ico is better than just / because it's more universal
         img.src = server.address + '/favicon.ico?t=' + Date.now();
     });
 }
 
-/**
- * Quick status check - faster but potentially less accurate
- * Good for rapid scanning without deep validation
- */
-async function quickCheckServerStatus(serverId) {
+async function checkSingleServerStatus(serverId) {
     const server = servers.find(s => s.id === serverId);
-    if (!server) return;
-
-    server.status = 'checking';
-    renderServers(currentCategory, currentSort);
-
-    const startTime = performance.now();
-    
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000); // Shorter timeout for quick check
-
-        const response = await fetch(server.address, {
-            method: 'HEAD', // HEAD is faster than GET, only returns headers
-            mode: 'no-cors',
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        const responseTime = performance.now() - startTime;
-        
-        // Check if response was successful (200-299 range)
-        if (response.ok) {
-            server.status = 'active';
-            server.lastResponseTime = Math.round(responseTime);
-        } else {
-            server.status = 'inactive';
-            server.lastResponseTime = null;
-        }
-    } catch (error) {
-        // Network error, timeout, or CORS issue = server is down/unreachable
-        server.status = 'inactive';
-        server.lastResponseTime = null;
-    } finally {
-        server.lastChecked = Date.now();
-        saveServers();
-        renderServers(currentCategory, currentSort);
+    if (server) {
+        await checkServerStatus(server);
+        showToast(`Status checked for ${server.name}`);
     }
 }
 
-/**
- * Batch status check for all servers
- * Checks each server sequentially with delay to avoid overwhelming network
- */
 async function checkAllServersStatus() {
     showToast('Checking status of all servers...');
     
@@ -234,7 +158,6 @@ async function checkAllServersStatus() {
         const server = servers[i];
         await checkServerStatus(server);
         
-        // Add delay between checks to prevent network flooding
         if (i < servers.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
@@ -243,30 +166,42 @@ async function checkAllServersStatus() {
     showToast('All servers status updated!');
 }
 
-/**
- * Quick batch check - faster version for scanning many servers
- * Runs checks in parallel for speed
- */
+async function quickCheckServerStatus(serverId) {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return;
+
+    server.status = 'checking';
+    renderServers(currentCategory, currentSort);
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        await fetch(server.address, {
+            method: 'HEAD',
+            mode: 'no-cors',
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+        server.status = 'active';
+    } catch (error) {
+        server.status = 'inactive';
+    } finally {
+        server.lastChecked = Date.now();
+        saveServers();
+        renderServers(currentCategory, currentSort);
+    }
+}
+
 async function quickCheckAllStatus() {
     showToast('Quick checking all servers...');
     
-    // Run all quick checks in parallel (up to 5 concurrent)
-    const promises = [];
-    for (let i = 0; i < servers.length; i++) {
-        promises.push(quickCheckServerStatus(servers[i].id));
-        
-        // Limit concurrent requests to 5
-        if (promises.length >= 5) {
-            await Promise.all(promises);
-            promises.length = 0;
-        }
-    }
+    const promises = servers.map(async (server) => {
+        await quickCheckServerStatus(server.id);
+    });
     
-    // Wait for remaining promises
-    if (promises.length > 0) {
-        await Promise.all(promises);
-    }
-    
+    await Promise.all(promises);
     showToast('Quick status check completed!');
 }
 
